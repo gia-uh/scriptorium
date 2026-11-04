@@ -108,7 +108,9 @@ a.ref-fig::after, a.ref-aud::after {
    book theme, which is the one that renders long tables of contents, did not. */
 .unit:has(.toc-entry) { margin-bottom:0; }
 .toc-entry { display:flex; align-items:baseline; gap:2mm; text-decoration:none; color:var(--ink); line-height:1.3; margin:1mm 0; }
-.toc-entry::after { content: target-counter(attr(href url), page); font-variant-numeric:tabular-nums; color:var(--muted); }
+/* The number goes on a span, not on .toc-entry::after: WeasyPrint 70 gives 0 for
+   target-counter() in a pseudo-element of a flex container. */
+.toc-pg::after { content: target-counter(attr(data-ref url), page); font-variant-numeric:tabular-nums; color:var(--muted); }
 .toc-txt { flex:0 0 auto; }
 .toc-lead { flex:1 1 auto; border-bottom:1px dotted var(--rule); transform:translateY(-1mm); }
 .toc-l1 { font-weight:700; margin-top:3.5mm; }

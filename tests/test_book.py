@@ -26,6 +26,29 @@ def test_fill_toc_lists_headings_with_ids():
     assert hrefs == ["#chap-one", "#sec-a", "#chap-two"]
 
 
+def test_toc_entry_carries_its_page_number_span():
+    (entry,) = [u.html for u in fill_toc(parse("::: toc\n:::\n\n# One {#one}"))
+                if u.name == "toc-entry"]
+    assert '<span class="toc-pg" data-ref="#one"></span>' in entry
+
+
+def test_toc_prints_real_page_numbers(tmp_path):
+    import subprocess
+
+    from scriptorium.galley import render_pdf
+
+    # WeasyPrint 70 resolves target-counter() to 0 in a pseudo-element of a flex
+    # container, which the TOC entry is; the number must still come out.
+    src = ("---\ntheme: book\ntitle: T\n---\n\n::: toc\n:::\n\n\\newpage\n\n"
+           "# First {#first}\n\nBody.\n\n\\newpage\n\n# Second {#second}\n\nBody.\n")
+    out = tmp_path / "toc.pdf"
+    render_pdf(src, str(out), execute=False)
+    first = subprocess.run(["pdftotext", "-f", "1", "-l", "1", str(out), "-"],
+                           capture_output=True, text=True).stdout
+    numbers = re.findall(r"^\s*(\d+)\s*$", first, re.M)
+    assert numbers and "0" not in numbers, first
+
+
 def test_toc_depth_limits_levels():
     src = "::: toc\n:::\n\n# A {#a}\n\n### Deep {#deep}"
     hrefs = _hrefs(fill_toc(parse(src), depth=1))

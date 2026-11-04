@@ -55,6 +55,9 @@
   margin:1.5mm 0; text-decoration:none; }
 /* each entry is its own .unit; the default unit gap would overflow the agenda */
 .slide.content .unit:has(.toc-entry) { margin-bottom:0; }
-.slide .toc-entry::before { content:target-counter(attr(href url), page); font-family:var(--mono);
-  font-size:12pt; font-weight:700; color:var(--accent); min-width:9mm; }
+/* On the span, not on .toc-entry::before: WeasyPrint 70 gives 0 for target-counter()
+   in a pseudo-element of a flex container. `order` keeps the number first. */
+.slide .toc-pg { order:-1; min-width:9mm; }
+.slide .toc-pg::after { content:target-counter(attr(data-ref url), page); font-family:var(--mono);
+  font-size:12pt; font-weight:700; color:var(--accent); }
 .slide .toc-lead { display:none; }
