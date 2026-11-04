@@ -385,7 +385,10 @@ def _body(src: str) -> str:
 
 def fill_toc(units: list[Unit], depth: int = 2) -> list[Unit]:
     """Replace each `::: toc` placeholder with one unit per heading (so the TOC
-    paginates). Page numbers are added by theme CSS via target-counter."""
+    paginates). Page numbers are added by theme CSS via target-counter, on the
+    entry's `.toc-pg` span and not on the link itself: the link is a flex
+    container, and WeasyPrint 70 resolves target-counter() to 0 in the
+    ::before/::after of a flex container."""
     if not any(u.name == "toc" for u in units):
         return units
     heads = [u for u in units
@@ -402,7 +405,8 @@ def fill_toc(units: list[Unit], depth: int = 2) -> list[Unit]:
             out.append(Unit(
                 html=(f'<a class="{cls}" href="#{h.heading_id}">'
                       f'<span class="toc-txt">{escape(h.heading)}</span>'
-                      f'<span class="toc-lead"></span></a>'),
+                      f'<span class="toc-lead"></span>'
+                      f'<span class="toc-pg" data-ref="#{h.heading_id}"></span></a>'),
                 name="toc-entry"))
     return out
 

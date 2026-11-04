@@ -15,7 +15,7 @@ from html import unescape
 from pathlib import Path
 
 from .book import (BookReport, _carry_counters, _chapters, _esc, _unit_html, browser_css,
-                   collect_css_assets, collect_images, resolve_refs)
+                   collect_css_assets, collect_images, html_refs, resolve_refs)
 from .media import collect_media, page_units
 from .theme import THEMES_DIR
 
@@ -103,10 +103,19 @@ def search_index(pages: list[Page]) -> list[dict]:
 
 
 def _link_pages(html: str, here: str, where: dict[str, str]) -> str:
-    """Point each `#id` link whose target is on another page at that page."""
+    """Point each `#id` link whose target is on another page at that page.
+
+    An id defined on this page keeps its link here, even when another page
+    defines it too: each formula's SVG names its glyphs `MJX-…` and uses them
+    through `xlink:href="#MJX-…"`, and the same names recur from page to page,
+    so sending one elsewhere leaves the formula with nothing to draw."""
+    local = set(_ID.findall(html))
+
     def sub(m):
         page = where.get(m.group(1))
-        return m.group(0) if page in (None, here) else f'href="{page}.html#{m.group(1)}"'
+        if page in (None, here) or m.group(1) in local:
+            return m.group(0)
+        return f'href="{page}.html#{m.group(1)}"'
     return _HREF.sub(sub, html)
 
 
@@ -151,15 +160,29 @@ def _contents(tree: list[dict]) -> str:
     return f'<nav class="contents"><ul>{"".join(items)}</ul></nav>'
 
 
+# The site's own words. A site in another language gets the English ones.
+STRINGS = {
+    "en": {"search": "Search", "on_this_page": "On this page", "source": "Source",
+           "menu": "Menu", "contents": "Contents", "no_results": "No results"},
+    "es": {"search": "Buscar", "on_this_page": "En esta página", "source": "Código fuente",
+           "menu": "Menú", "contents": "Índice", "no_results": "Sin resultados"},
+}
+
+
+def _strings(lang: str) -> dict:
+    return STRINGS.get(lang.split("-")[0].lower(), STRINGS["en"])
+
+
 def _shell(page: Page, body: str, *, site_title: str, lang: str, tree: list[dict],
            outline: list, prev: Page | None, next: Page | None, output) -> str:
+    t = _strings(lang)
     title = page.title if page.kind != "index" else site_title
     head_title = _esc(title if title == site_title else f"{title} · {site_title}")
-    source = (f'<a class="source" href="{_esc(output.repo_url)}">Source</a>'
+    source = (f'<a class="source" href="{_esc(output.repo_url)}">{t["source"]}</a>'
               if output.repo_url else "")
     outline_html = ""
     if outline:
-        outline_html = ('<aside class="outline"><p>On this page</p><ul>' + "".join(
+        outline_html = (f'<aside class="outline"><p>{t["on_this_page"]}</p><ul>' + "".join(
             f'<li class="h{lvl}"><a href="#{_esc(i)}">{_esc(t)}</a></li>' for lvl, i, t in outline)
             + "</ul></aside>")
     pager = '<nav class="pager">'
@@ -180,13 +203,13 @@ def _shell(page: Page, body: str, *, site_title: str, lang: str, tree: list[dict
 </head>
 <body class="docs">
 <header class="topbar">
-<button class="menu" type="button" aria-label="Menu" aria-expanded="false">☰</button>
+<button class="menu" type="button" aria-label="{t["menu"]}" aria-expanded="false">☰</button>
 <a class="site-title" href="index.html">{_esc(site_title)}</a>
-<div class="search"><input type="search" placeholder="Search" aria-label="Search" autocomplete="off"><div class="search-results" hidden></div></div>
+<div class="search"><input type="search" placeholder="{t["search"]}" aria-label="{t["search"]}" autocomplete="off"><div class="search-results" data-none="{t["no_results"]}" hidden></div></div>
 {source}
 </header>
 <div class="layout">
-<nav class="sidebar" aria-label="Contents">{_sidebar(tree, page.slug, outline)}</nav>
+<nav class="sidebar" aria-label="{t["contents"]}">{_sidebar(tree, page.slug, outline)}</nav>
 <main>
 {body}
 {pager}
@@ -211,7 +234,7 @@ def render_docs(src: str, out_dir: Path, *, output, base_dir: Path, theme_name: 
                 project_meta=project_meta, for_screen=True, site_html=True)
     if str(p.theme.meta.get("mode", "")) == "deck":
         raise ValueError("deck themes have no docs form; render them to PDF")
-    warnings = list(p.warnings) + resolve_refs(p.units, p.theme.meta.get("html-refs", {}), p.meta)
+    warnings = list(p.warnings) + resolve_refs(p.units, html_refs(p), p.meta)
 
     if out_dir.exists():
         shutil.rmtree(out_dir)

@@ -36,7 +36,11 @@ numbers continue from page to page.
 
 `resolve_refs()` first writes each `@ref` text, exactly as for the book. Then
 every `href="#id"` whose id lives on another page becomes
-`href="<slug>.html#id"`; links to ids on the same page stay as they are. Each
+`href="<slug>.html#id"`; links to ids on the same page stay as they are, and
+so does a link to an id that this page defines even if another page defines it
+too. That rule is what keeps formulas drawing: MathJax names each formula's
+glyphs `MJX-<n>-…` and points at them with `xlink:href="#MJX-…"`, and the same
+names recur on every page that has formulas. Each
 `##` and `###` gets a trailing `<a class="anchor">#</a>` after the references
 are resolved, so a reference to a section reads its title without the `#`.
 

@@ -4,6 +4,21 @@ All notable changes to this project are documented here. Format: Keep a Changelo
 
 ## [Unreleased]
 
+### Fixes
+
+- **Contents page numbers under WeasyPrint 70.** WeasyPrint 70 resolves
+  `target-counter()` to 0 in a pseudo-element of a flex container, so every TOC
+  entry of the `book` and `deck` themes read 0. The number now sits on a
+  `.toc-pg` span inside the entry (#36).
+- **Formulas on docs pages.** The cross-page link rewrite sent each formula's
+  `xlink:href="#MJX-…"` glyph references to another page that used the same
+  names, and the formula drew nothing. An id defined on the page keeps its link
+  there (#38).
+- **The docs site speaks the book's language.** Its own words (search, "On this
+  page", the source link, the menu, "No results") follow `lang:`, in English or
+  Spanish. A project or document can set `html-refs:` over the theme's, so a
+  Spanish book's references can read "figura 3" in the HTML outputs (#37).
+
 ## [v0.12.0] - 2026-10-29
 
 ### Features

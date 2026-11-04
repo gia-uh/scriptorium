@@ -248,7 +248,10 @@ outputs:
 ```
 
 A part heading (`# Part {.part}`) with text under it gets its own page; one
-with none is only a label in the sidebar. `scriptorium render chapter.md
+with none is only a label in the sidebar. The site's own words (search, the
+outline's title, the source link) follow `lang:`, in English or Spanish, and a
+project's `html-refs:` (`fig: "figura {figure}"`) replaces the theme's reference
+formats in the HTML outputs. `scriptorium render chapter.md
 --format docs` builds a one-page site from a single file.
 
 The site is plain files with relative URLs, no service worker and no server

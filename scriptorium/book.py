@@ -160,6 +160,13 @@ def _inner_text(html: str, start: int, tag: str) -> str:
     return _TAGS.sub("", html[start:end if end >= 0 else start]).strip()
 
 
+def html_refs(p) -> dict:
+    """The reference formats for an HTML output: the theme's `html-refs:`, with
+    the document's or project's own `html-refs:` on top, so a Spanish book can
+    say "figura 3" where the theme quotes the caption."""
+    return {**(p.theme.meta.get("html-refs") or {}), **(p.meta.get("html-refs") or {})}
+
+
 def resolve_refs(units, formats: dict, vars: dict) -> list[str]:
     """Write each `@kind-id` reference's text into its empty anchor.
 
@@ -505,7 +512,7 @@ def render_book(src: str, out_dir: Path, *, output, base_dir: Path, theme_name: 
                 project_meta=project_meta, for_screen=True)
     if str(p.theme.meta.get("mode", "")) == "deck":
         raise ValueError("deck themes have no book form; render them to PDF")
-    warnings = list(p.warnings) + resolve_refs(p.units, p.theme.meta.get("html-refs", {}), p.meta)
+    warnings = list(p.warnings) + resolve_refs(p.units, html_refs(p), p.meta)
 
     if out_dir.exists():
         shutil.rmtree(out_dir)
