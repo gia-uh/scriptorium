@@ -137,3 +137,21 @@ def test_a_formula_keeps_its_glyphs_on_its_own_page(tmp_path):
     assert "MJX" in two
     assert ".html#MJX" not in two
 
+
+def test_spanish_site_chrome_and_project_html_refs(tmp_path):
+    from scriptorium.docs import render_docs
+    from scriptorium.project import Output
+
+    src = ('# Uno {#uno}\n\nMira @fig-a.\n\n'
+           '<figure id="fig-a"><svg width="4" height="4"></svg>'
+           '<figcaption>Un pie largo que no debe citarse entero.</figcaption></figure>\n\n'
+           '## Sección {#sec}\n\nTexto.\n')
+    out = tmp_path / "site"
+    render_docs(src, out, output=Output(name="site", format="docs", dir="site",
+                                        repo_url="https://example.org/r"),
+                base_dir=tmp_path, theme_name="book", execute=False,
+                project_meta={"lang": "es", "html-refs": {"fig": "figura {figure}"}})
+    page = (out / "uno.html").read_text(encoding="utf-8")
+    assert 'placeholder="Buscar"' in page and "En esta página" in page
+    assert ">Código fuente<" in page and 'data-none="Sin resultados"' in page
+    assert "figura 1" in page and "Un pie largo que no debe citarse entero.</a>" not in page

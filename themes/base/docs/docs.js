@@ -73,7 +73,7 @@
     hits.sort(function (a, b) { return b[0] - a[0]; });
     if (!hits.length) {
       const none = document.createElement("p");
-      none.textContent = "No results";
+      none.textContent = results.dataset.none || "No results";
       results.appendChild(none);
     }
     hits.slice(0, 10).forEach(function (hit) {
