@@ -4,6 +4,15 @@ All notable changes to this project are documented here. Format: Keep a Changelo
 
 ## [Unreleased]
 
+## [v0.13.0] - 2026-11-04
+
+### Features
+
+- **The docs site speaks the book's language.** Its own words (search, "On this
+  page", the source link, the menu, "No results") follow `lang:`, in English or
+  Spanish. A project or document can set `html-refs:` over the theme's, so a
+  Spanish book's references can read "figura 3" in the HTML outputs (#37).
+
 ### Fixes
 
 - **Contents page numbers under WeasyPrint 70.** WeasyPrint 70 resolves
@@ -14,10 +23,6 @@ All notable changes to this project are documented here. Format: Keep a Changelo
   `xlink:href="#MJX-…"` glyph references to another page that used the same
   names, and the formula drew nothing. An id defined on the page keeps its link
   there (#38).
-- **The docs site speaks the book's language.** Its own words (search, "On this
-  page", the source link, the menu, "No results") follow `lang:`, in English or
-  Spanish. A project or document can set `html-refs:` over the theme's, so a
-  Spanish book's references can read "figura 3" in the HTML outputs (#37).
 
 ## [v0.12.0] - 2026-10-29
 
