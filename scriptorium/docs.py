@@ -103,10 +103,19 @@ def search_index(pages: list[Page]) -> list[dict]:
 
 
 def _link_pages(html: str, here: str, where: dict[str, str]) -> str:
-    """Point each `#id` link whose target is on another page at that page."""
+    """Point each `#id` link whose target is on another page at that page.
+
+    An id defined on this page keeps its link here, even when another page
+    defines it too: each formula's SVG names its glyphs `MJX-…` and uses them
+    through `xlink:href="#MJX-…"`, and the same names recur from page to page,
+    so sending one elsewhere leaves the formula with nothing to draw."""
+    local = set(_ID.findall(html))
+
     def sub(m):
         page = where.get(m.group(1))
-        return m.group(0) if page in (None, here) else f'href="{page}.html#{m.group(1)}"'
+        if page in (None, here) or m.group(1) in local:
+            return m.group(0)
+        return f'href="{page}.html#{m.group(1)}"'
     return _HREF.sub(sub, html)
 
 

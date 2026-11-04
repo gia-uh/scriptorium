@@ -122,3 +122,18 @@ def test_a_chapter_named_index_does_not_replace_the_front_page(tmp_path):
     assert "Front text" in (out / "index.html").read_text()
     html = (out / "index-2.html").read_text()
     assert 'rel="prev" href="index.html"' in html and 'rel="next" href="other.html"' in html
+
+
+def test_a_formula_keeps_its_glyphs_on_its_own_page(tmp_path):
+    from scriptorium.docs import render_docs
+    from scriptorium.project import Output
+
+    # The same formula on two pages: MathJax names its glyphs the same on both.
+    src = "# One {#one}\n\nIt costs $n^2$.\n\n# Two {#two}\n\nAgain $n^2$.\n"
+    out = tmp_path / "site"
+    render_docs(src, out, output=Output(name="site", format="docs", dir="site"),
+                base_dir=tmp_path, execute=False)
+    two = (out / "two.html").read_text(encoding="utf-8")
+    assert "MJX" in two
+    assert ".html#MJX" not in two
+
