@@ -99,6 +99,16 @@ query word must be a prefix of a word in the entry; a title word scores 2, a
 text word 1; the first ten show, with the chapter under each when it differs
 from the title.
 
+Results show the chapter under the section title and a snippet of about 140
+characters around the first match, with every match in `<mark>`; all of it is
+built with text nodes, never `innerHTML`, because the index holds page text.
+Arrow keys move `.selected`, Enter opens it, Escape closes, and `/` (outside a
+text field), Ctrl-K and Cmd-K focus the box. A result's link carries `?h=<the
+words>`; the page it opens wraps prefix matches in `main` in
+`mark.search-hit` and drops `?h=` from the address with `replaceState`. Below
+640 px the focused box (`.search.open`) covers the bar and the results take the
+screen's width.
+
 ## Testing
 
 `tests/test_docs.py` builds a small site (two parts, one without text, two

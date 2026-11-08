@@ -254,7 +254,9 @@ outputs:
 
 The top bar carries the logo, the title, the version, search, a light/dark
 switch and the repository. The switch cycles auto, light and dark, is
-remembered in the browser, and applies before the first paint. A GitHub
+remembered in the browser, and applies before the first paint. Search
+marks the words in each result and on the page a result opens; arrow keys,
+Enter, `/` and Ctrl-K drive it from the keyboard. A GitHub
 repository also shows its latest release tag and star count, fetched by the
 reader's browser and kept for an hour; another forge shows its name.
 `palette.primary` colours the bar and `palette.accent` the links. The docs
