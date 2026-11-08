@@ -170,7 +170,7 @@ pre .c{color:var(--faint)} pre .k{color:var(--accent)} pre .s{color:var(--ok)}
 <div class="chrome">
   <span>scriptorium</span>
   <span class="tab">spec · a docs site on par with MkDocs Material</span>
-  <span class="st"><span class="pill acc">proposal</span><span class="pill">2026-11-07</span><span class="pill">#22</span></span>
+  <span class="st"><span class="pill acc">approved</span><span class="pill">2026-11-07</span><span class="pill">#22</span></span>
 </div>
 
 <div class="wrap">
@@ -191,7 +191,7 @@ pre .c{color:var(--faint)} pre .k{color:var(--accent)} pre .s{color:var(--ok)}
   <a href="#delivery">Delivery</a>
   <a href="#testing">Testing</a>
   <a href="#non-goals">Non-goals</a>
-  <a href="#questions">Open questions</a>
+  <a href="#questions">Answered questions</a>
 </nav>
 
 <main>
@@ -231,7 +231,7 @@ pre .c{color:var(--faint)} pre .k{color:var(--accent)} pre .s{color:var(--ok)}
 <tr><td>Edit this page</td><td>yes</td><td class="no">no</td><td>yes, from <code>repo-url</code> and the chapter's path</td></tr>
 <tr><td>Last updated</td><td>with a plugin</td><td class="no">no</td><td>from git, per chapter file</td></tr>
 <tr><td>Site files</td><td>sitemap, 404, meta, social cards</td><td class="no">none</td><td>sitemap, 404, description, canonical, Open Graph</td></tr>
-<tr><td>Versioned docs</td><td>with mike</td><td class="no">no</td><td>open question 3</td></tr>
+<tr><td>Versioned docs</td><td>with mike</td><td class="no">no</td><td>later, after two repos use the rest</td></tr>
 </tbody>
 </table>
 <p>Two things looked like defects and are not. At 390 px, a screenshot taken right after a resize showed the drawer half open: it was the slide animation, and after a reload the drawer sits at −300 px. Long code lines are not cut off: the <code>pre</code> scrolls sideways, but nothing shows that it does, which the copy button's PR fixes with a visible scrollbar.</p>
@@ -246,7 +246,7 @@ pre .c{color:var(--faint)} pre .k{color:var(--accent)} pre .s{color:var(--ok)}
 <tr><td>Admonitions and tabs live in the base theme</td><td class="why">They are components like <code>::: timeline</code>, so the same chapter prints in the PDF and the HTML book: a collapsed note prints open, tabs print one after another with their titles.</td><td class="who">proposed</td></tr>
 <tr><td>A code block's title comes from <code>export=</code></td><td class="why">A tangled example then shows its file name on the page for free, which ties the guide to <code>docs/examples/</code>.</td><td class="who">proposed</td></tr>
 <tr><td>Version from <code>pyproject.toml</code> by default</td><td class="why"><code>version: auto</code> reads <code>[project].version</code> from the nearest <code>pyproject.toml</code> above the project, then <code>git describe --tags</code>. A literal string wins.</td><td class="who">proposed</td></tr>
-<tr><td>Repository stats fetched by the browser</td><td class="why">Stars and the latest tag come from the GitHub API on first view and are kept for an hour in <code>sessionStorage</code>. If the request fails, only owner/name shows. The alternative is open question 2.</td><td class="who q">open</td></tr>
+<tr><td>Repository stats fetched by the browser</td><td class="why">Stars and the latest tag come from the GitHub API on first view and are kept for an hour in <code>sessionStorage</code>. If the request fails, only owner/name shows. Fetching in the browser keeps them current; writing them at build time would leave them stale until the next release.</td><td class="who">maintainer</td></tr>
 <tr><td>No API reference pages</td><td class="why">Literate docs name the API in prose, and rift checks coverage. Generating reference pages would bring back the class-by-class tour the use-case chapters replace.</td><td class="who">proposed</td></tr>
 </tbody>
 </table>
@@ -378,7 +378,7 @@ uv add purely
 </ul>
 
 <h3 id="versions">Versioned docs</h3>
-<p>A version selector needs every published version on the site at once. A Pages deploy from an artifact replaces the whole site, so this means either a <code>gh-pages</code> branch that accumulates <code>/1.2/</code>, <code>/1.2.1/</code> and a <code>latest/</code> alias with a <code>versions.json</code>, as mike does, or rendering every tag in one build. Both are real work and change how every adopting repo deploys, so it is a separate decision (open question 3). The mockup's selector shows where it would sit.</p>
+<p>A version selector needs every published version on the site at once. A Pages deploy from an artifact replaces the whole site, so this means either a <code>gh-pages</code> branch that accumulates <code>/1.2/</code>, <code>/1.2.1/</code> and a <code>latest/</code> alias with a <code>versions.json</code>, as mike does, or rendering every tag in one build. Both are real work and change how every adopting repo deploys, so it waits until purely and one more repo have used the five PRs. The mockup's selector shows where it would sit.</p>
 
 <h2 id="delivery"><span class="n">07</span>Delivery</h2>
 <div class="steps">
@@ -406,12 +406,13 @@ uv add purely
 <li>Instant navigation (loading pages without a full reload). The pages are small and static.</li>
 </ul>
 
-<h2 id="questions"><span class="n">10</span>Open questions</h2>
+<h2 id="questions"><span class="n">10</span>Answered questions</h2>
+<p>The maintainer took the recommendation on all four, on 2026-11-07.</p>
 <ol>
-<li><b>Typography.</b> Should docs pages always use the docs typography (sans, left-aligned, no hyphenation) unless a project opts out, as proposed, or follow the theme unless it opts in?</li>
-<li><b>Repository stats.</b> Fetch stars and the latest tag in the browser (always current, one request to api.github.com per visit per hour, as MkDocs Material does), or write them at build time (no request, stale until the next release)?</li>
-<li><b>Versioned docs.</b> Build the version selector now, as a sixth PR with a <code>gh-pages</code> layout like mike's, or ship the five PRs first and decide after purely and one more repo have used them?</li>
-<li><b>Palette names.</b> CSS colours only (<code>"#0f766e"</code>), as proposed, or also Material's named palette (<code>teal</code>, <code>indigo</code>…)?</li>
+<li><b>Typography.</b> Should docs pages always use the docs typography (sans, left-aligned, no hyphenation) unless a project opts out, as proposed, or follow the theme unless it opts in? <span class="who">Docs typography by default; <code>typography: theme</code> opts out.</span></li>
+<li><b>Repository stats.</b> Fetch stars and the latest tag in the browser (always current, one request to api.github.com per visit per hour, as MkDocs Material does), or write them at build time (no request, stale until the next release)? <span class="who">In the browser.</span></li>
+<li><b>Versioned docs.</b> Build the version selector now, as a sixth PR with a <code>gh-pages</code> layout like mike's, or ship the five PRs first and decide after purely and one more repo have used them? <span class="who">The five PRs first.</span></li>
+<li><b>Palette names.</b> CSS colours only (<code>"#0f766e"</code>), as proposed, or also Material's named palette (<code>teal</code>, <code>indigo</code>…)? <span class="who">CSS colours only.</span></li>
 </ol>
 </main>
 </div>
