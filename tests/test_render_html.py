@@ -30,7 +30,7 @@ def test_render_html_returns_a_whole_document():
     assert '<h1 id="embeddings">Embeddings</h1>' in html
     assert 'class="footnote-ref"' in html          # preprocessors ran
     assert "<svg" in html                           # math rendered
-    assert '<div class="note">' in html             # component rendered
+    assert '<div class="admonition note ' in html   # component rendered (note is an admonition)
     assert warnings == []
 
 

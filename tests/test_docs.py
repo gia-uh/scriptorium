@@ -57,7 +57,7 @@ def site(tmp_path_factory):
 
 def test_one_page_per_chapter_and_part_with_text(site):
     names = sorted(p.name for p in site.glob("*.html"))
-    assert names == ["exercises-2.html", "exercises.html", "index.html", "sound.html",
+    assert names == ["404.html", "exercises-2.html", "exercises.html", "index.html", "sound.html",
                      "strings.html", "what.html"]
 
 
@@ -153,5 +153,125 @@ def test_spanish_site_chrome_and_project_html_refs(tmp_path):
                 project_meta={"lang": "es", "html-refs": {"fig": "figura {figure}"}})
     page = (out / "uno.html").read_text(encoding="utf-8")
     assert 'placeholder="Buscar"' in page and "En esta página" in page
-    assert ">Código fuente<" in page and 'data-none="Sin resultados"' in page
+    assert 'title="Código fuente"' in page and 'data-none="Sin resultados"' in page
     assert "figura 1" in page and "Un pie largo que no debe citarse entero.</a>" not in page
+
+
+def _site_with(tmp_path, **output):
+    from scriptorium.docs import render_docs
+    from scriptorium.project import Output
+
+    out = tmp_path / "site"
+    render_docs("# One {#one}\n\n## A section {#a}\n\nText.\n", out,
+                output=Output(name="site", format="docs", dir="site", **output),
+                base_dir=tmp_path, theme_name="book", execute=False)
+    return out
+
+
+def test_the_header_shows_logo_version_and_a_github_repository(tmp_path):
+    (tmp_path / "mark.svg").write_text('<svg xmlns="http://www.w3.org/2000/svg"/>')
+    (tmp_path / "icon.png").write_bytes(b"\x89PNG\r\n\x1a\n")
+    out = _site_with(tmp_path, logo="mark.svg", favicon="icon.png", version="1.2.1",
+                     repo_url="https://github.com/gia-uh/purely")
+    page = (out / "one.html").read_text(encoding="utf-8")
+    assert (out / "logo.svg").is_file() and '<img class="logo" src="logo.svg"' in page
+    assert (out / "favicon.png").is_file() and '<link rel="icon" href="favicon.png">' in page
+    assert '<span class="version" title="Version">1.2.1</span>' in page
+    assert 'data-github="gia-uh/purely"' in page and ">gia-uh/purely<" in page
+
+
+def test_another_forge_gets_the_generic_mark_and_no_api(tmp_path):
+    page = (_site_with(tmp_path, repo_url="https://codeberg.org/ana/tool.git") / "one.html").read_text()
+    assert ">ana/tool<" in page and "data-github" not in page
+
+
+def test_version_auto_reads_the_nearest_pyproject(tmp_path):
+    from scriptorium.docs import resolve_version
+    (tmp_path / "pyproject.toml").write_text('[project]\nname = "x"\nversion = "3.4.5"\n')
+    (tmp_path / "docs").mkdir()
+    assert resolve_version("auto", tmp_path / "docs") == "3.4.5"
+    assert resolve_version("2.0", tmp_path / "docs") == "2.0"
+    assert resolve_version(None, tmp_path / "docs") is None
+
+
+def test_palette_and_typography(tmp_path):
+    out = _site_with(tmp_path, palette={"primary": "#0f766e", "accent": "#d97706", "scheme": "dark"})
+    page, css = (out / "one.html").read_text(), (out / "docs.css").read_text()
+    assert 'data-scheme-default="dark"' in page and 'class="docs typo-docs has-primary"' in page
+    assert "--docs-primary: #0f766e;" in css and "--docs-accent: #d97706;" in css
+    plain = (_site_with(tmp_path / "b", typography="theme") / "one.html").read_text()
+    assert '<body class="docs" ' in plain and 'data-scheme-default="auto"' in plain
+
+
+def test_a_project_rejects_a_bad_palette_or_typography(tmp_path):
+    from scriptorium.project import ProjectError, load
+    for bad, msg in [("palette: {primary: red, colour: blue}", "palette"),
+                     ("palette: {scheme: sepia}", "scheme"), ("typography: serif", "typography")]:
+        (tmp_path / "scriptorium.yaml").write_text(f"outputs:\n  site:\n    format: docs\n    {bad}\n")
+        with pytest.raises(ProjectError, match=msg):
+            load(tmp_path / "scriptorium.yaml")
+    (tmp_path / "scriptorium.yaml").write_text(
+        "outputs:\n  site:\n    format: docs\n    version: 1.2\n    logo: l.svg\n    palette: {primary: '#111'}\n")
+    out = load(tmp_path / "scriptorium.yaml").outputs[0]
+    assert (out.version, out.logo, out.palette, out.typography) == ("1.2", "l.svg", {"primary": "#111"}, "docs")
+
+
+def test_a_code_title_and_its_language(tmp_path):
+    src = '# One {#one}\n\n```python {title="setup.py"}\nx = 1\n```\n\n```bash\nls\n```\n'
+    from scriptorium.docs import render_docs
+    from scriptorium.project import Output
+    out = tmp_path / "site"
+    render_docs(src, out, output=Output(name="site", format="docs", dir="site"), base_dir=tmp_path, execute=False)
+    page = (out / "one.html").read_text()
+    assert '<div class="codeblock" data-lang="python"><span class="code-file">setup.py</span>' in page
+    assert '<div class="codeblock" data-lang="bash"><span class="code-src">' in page
+    assert 'data-copy="Copy"' in page and "--docs-output-label: 'Output'" in page
+
+
+def _git_project(tmp_path):
+    """A two-chapter project in a git repo, its docs in docs/."""
+    import subprocess
+    root = tmp_path / "repo"
+    docs = root / "docs"
+    docs.mkdir(parents=True)
+    (docs / "one.md").write_text("# One {#one}\n\nThe first chapter, about one thing.\n\n```bash\n# not a heading\n```\n")
+    (docs / "two.md").write_text("# Two {#two}\n\nThe second.\n")
+    (docs / "scriptorium.yaml").write_text(
+        "base-url: https://example.org/lib/\nfiles: [one.md, two.md]\noutputs:\n  site:\n    format: docs\n"
+        "    repo-url: https://github.com/ana/lib\n    footer: '© 2026 Ana'\n")
+    env = {"GIT_AUTHOR_DATE": "2026-11-01T12:00:00", "GIT_COMMITTER_DATE": "2026-11-01T12:00:00"}
+    run = lambda *a: subprocess.run(a, cwd=root, check=True, capture_output=True,
+                                    env={**__import__("os").environ, **env})
+    run("git", "init", "-q")
+    run("git", "-c", "user.name=t", "-c", "user.email=t@t", "add", ".")
+    run("git", "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "docs")
+    from scriptorium.cli import main
+    assert main(["render", str(docs / "scriptorium.yaml"), "--no-execute"]) == 0
+    return docs / "site"
+
+
+def test_each_page_links_its_file_for_editing_and_shows_its_date(tmp_path):
+    site = _git_project(tmp_path)
+    one, two = (site / "one.html").read_text(), (site / "two.html").read_text()
+    assert 'href="https://github.com/ana/lib/edit/HEAD/docs/one.md"' in one
+    assert 'href="https://github.com/ana/lib/edit/HEAD/docs/two.md"' in two
+    assert "Last updated 2026-11-01" in one and '<span class="site-footer">© 2026 Ana</span>' in one
+
+
+def test_meta_canonical_sitemap_and_404(tmp_path):
+    site = _git_project(tmp_path)
+    one = (site / "one.html").read_text()
+    assert '<meta name="description" content="The first chapter, about one thing.">' in one
+    assert '<link rel="canonical" href="https://example.org/lib/one.html">' in one
+    assert '<meta property="og:title" content="One">' in one
+    sitemap = (site / "sitemap.xml").read_text()
+    assert "<loc>https://example.org/lib/</loc>" in sitemap and "<loc>https://example.org/lib/two.html</loc>" in sitemap
+    lost = (site / "404.html").read_text()
+    assert '<base href="https://example.org/lib/">' in lost and "Page not found" in lost
+
+
+def test_without_git_or_base_url_the_site_still_builds(tmp_path):
+    out = _site_with(tmp_path, repo_url="https://github.com/ana/lib", footer="F")
+    page = (out / "one.html").read_text()
+    assert "edit/HEAD" not in page and "Last updated" not in page and "F</span>" in page
+    assert (out / "404.html").is_file() and not (out / "sitemap.xml").exists()

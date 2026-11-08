@@ -10,6 +10,8 @@ in `themes/base/docs/`.
 import json
 import re
 import shutil
+import subprocess
+import tomllib
 from dataclasses import dataclass
 from html import unescape
 from pathlib import Path
@@ -163,9 +165,17 @@ def _contents(tree: list[dict]) -> str:
 # The site's own words. A site in another language gets the English ones.
 STRINGS = {
     "en": {"search": "Search", "on_this_page": "On this page", "source": "Source",
-           "menu": "Menu", "contents": "Contents", "no_results": "No results"},
+           "menu": "Menu", "contents": "Contents", "no_results": "No results",
+           "scheme": "Colour scheme", "version": "Version",
+           "copy": "Copy", "copied": "Copied", "output": "Output",
+           "updated": "Last updated", "edit": "Edit this page",
+           "not_found": "Page not found", "not_found_text": "There is no page at this address. Search, or go to the"},
     "es": {"search": "Buscar", "on_this_page": "En esta página", "source": "Código fuente",
-           "menu": "Menú", "contents": "Índice", "no_results": "Sin resultados"},
+           "menu": "Menú", "contents": "Índice", "no_results": "Sin resultados",
+           "scheme": "Esquema de color", "version": "Versión",
+           "copy": "Copiar", "copied": "Copiado", "output": "Salida",
+           "updated": "Actualizado", "edit": "Editar esta página",
+           "not_found": "Página no encontrada", "not_found_text": "No hay ninguna página en esta dirección. Busca, o ve a la"},
 }
 
 
@@ -173,13 +183,180 @@ def _strings(lang: str) -> dict:
     return STRINGS.get(lang.split("-")[0].lower(), STRINGS["en"])
 
 
+def resolve_version(version: str | None, base_dir: Path) -> str | None:
+    """The version the header shows. A literal string is shown as written;
+    `auto` reads `[project].version` from the nearest pyproject.toml at or
+    above `base_dir`, then the latest git tag; anything else shows none."""
+    if version != "auto":
+        return version or None
+    for d in [base_dir.resolve(), *base_dir.resolve().parents]:
+        f = d / "pyproject.toml"
+        if f.is_file():
+            try:
+                found = tomllib.loads(f.read_text(encoding="utf-8")).get("project", {}).get("version")
+            except (OSError, tomllib.TOMLDecodeError):
+                found = None
+            if found:
+                return str(found)
+            break
+    try:
+        tag = subprocess.run(["git", "describe", "--tags", "--abbrev=0"], cwd=base_dir,
+                             capture_output=True, text=True, timeout=10)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return tag.stdout.strip() or None
+
+
+_H1 = re.compile(r"^#\s+(.*?)\s*(?:\{[^}]*\})?\s*$")
+_FENCE_LINE = re.compile(r"^\s*(```|~~~)")
+
+
+def page_files(pages: list[Page], files: list[str], base_dir: Path) -> dict[str, str]:
+    """Each page's source file. The files' `#` headings, outside code fences,
+    are matched in order to the pages' titles; the index gets the first file."""
+    heads = []
+    for rel in files:
+        try:
+            lines = (base_dir / rel).read_text(encoding="utf-8").splitlines()
+        except OSError:
+            continue
+        fenced = False
+        for line in lines:
+            if _FENCE_LINE.match(line):
+                fenced = not fenced
+            elif not fenced and (m := _H1.match(line)):
+                heads.append((m.group(1), rel))
+    out = {"index": files[0]} if files else {}
+    i = 0
+    for page in pages:
+        if page.kind == "index":
+            continue
+        for j in range(i, len(heads)):
+            if heads[j][0] == page.title:
+                out[page.slug], i = heads[j][1], j + 1
+                break
+    return out
+
+
+def _git(base_dir: Path, *args: str) -> str | None:
+    try:
+        r = subprocess.run(["git", *args], cwd=base_dir, capture_output=True, text=True, timeout=10)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return r.stdout.strip() if r.returncode == 0 else None
+
+
+def edit_url(repo_url: str | None, edit_path: str | None, rel: str, base_dir: Path) -> str | None:
+    """Where a reader edits a page's file: GitHub and GitLab, on the default branch."""
+    if not repo_url:
+        return None
+    host, slug = repo_parts(repo_url)
+    if not slug:
+        return None
+    prefix = edit_path if edit_path is not None else _git(base_dir, "rev-parse", "--show-prefix")
+    if prefix is None:
+        return None
+    path = (prefix.strip("/") + "/" + rel).lstrip("/")
+    root = f"https://{host}/{slug}"
+    if host.endswith("github.com"):
+        return f"{root}/edit/HEAD/{path}"
+    if host.endswith("gitlab.com"):
+        return f"{root}/-/edit/HEAD/{path}"
+    return None
+
+
+def _description(units) -> str:
+    """The page's first paragraph as plain text, for search engines and link previews."""
+    for u in units:
+        if u.html.lstrip().startswith("<p"):
+            text = " ".join(unescape(_TAGS.sub("", u.html)).split())
+            if text:
+                return text if len(text) <= 160 else text[:157].rsplit(" ", 1)[0] + "…"
+    return ""
+
+
+_GITHUB_MARK = ('<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 '
+                '6.53 5.47 7.59.4.07.55-.17.55-.38v-1.33c-2.23.48-2.7-1.07-2.7-1.07-.36-.92-.89-1.17-.89-1.17'
+                '-.73-.5.06-.49.06-.49.8.06 1.23.83 1.23.83.72 1.22 1.87.87 2.33.66.07-.52.28-.87.5-1.07-1.78-.2'
+                '-3.65-.89-3.65-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82A7.6 7.6 0 0 '
+                '1 8 3.87c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.28.82 '
+                '2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48v2.2c0 .21.15.46.55.38A8 8 0 0 0 16 8c0-4.42'
+                '-3.58-8-8-8z"/></svg>')
+# any other forge: a branch, drawn as two commits joined to a third
+_FORGE_MARK = ('<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5 3.25a1.75 1.75 0 1 1-2.5 1.58v6.34a1.75 '
+               '1.75 0 1 1-1 0V4.83A1.75 1.75 0 1 1 5 3.25Zm9 0a1.75 1.75 0 0 1-1 1.58V6a3 3 0 0 1-3 3H6.5v2.17a1.75 '
+               '1.75 0 1 1-1 0V9a1 1 0 0 1 1-1H10a2 2 0 0 0 2-2V4.83a1.75 1.75 0 1 1 2-1.58Z" transform="translate(.5 .5)"/></svg>')
+
+
+def repo_parts(url: str) -> tuple[str, str]:
+    """The forge's host and the `owner/name` a repository URL points at."""
+    m = re.match(r"https?://([^/]+)/([^/]+)/([^/#?]+)", url or "")
+    if not m:
+        return "", ""
+    name = m.group(3)[:-4] if m.group(3).endswith(".git") else m.group(3)
+    return m.group(1).lower(), f"{m.group(2)}/{name}"
+
+
+def _repo_widget(url: str | None, t: dict) -> str:
+    if not url:
+        return ""
+    host, slug = repo_parts(url)
+    mark = _GITHUB_MARK if host in ("github.com", "www.github.com") else _FORGE_MARK
+    api = f' data-github="{_esc(slug)}"' if mark is _GITHUB_MARK and slug else ""
+    label = _esc(slug or url)
+    return (f'<a class="source repo" href="{_esc(url)}" title="{t["source"]}"{api}>{mark}'
+            f'<span class="repo-name">{label}<small class="repo-facts" hidden></small></span></a>')
+
+
+def palette_css(palette: dict) -> str:
+    """The project's colours as overrides of the layout's variables."""
+    rules = []
+    if palette.get("primary"):
+        rules.append(f"--docs-primary: {palette['primary']};")
+    if palette.get("accent"):
+        rules.append(f"--docs-accent: {palette['accent']}; --accent: {palette['accent']};")
+    if not rules:
+        return ""
+    sel = ':root, :root[data-scheme="dark"]'
+    return f"/* palette from the project */\n{sel} {{ {' '.join(rules)} }}\n"
+
+
+def _copy_asset(rel: str | None, base_dir: Path, out_dir: Path, stem: str, warnings: list) -> str | None:
+    """Copy the logo or favicon next to the pages; return its name there."""
+    if not rel:
+        return None
+    src = base_dir / rel
+    if not src.is_file():
+        warnings.append(f"{stem} file {rel!r} does not exist")
+        return None
+    name = f"{stem}{src.suffix.lower()}"
+    shutil.copyfile(src, out_dir / name)
+    return name
+
+
+# Runs before the first paint, so a reader who chose dark never sees a light
+# frame: the stored choice, else the project's, else the system's.
+_SCHEME_SCRIPT = ("<script>(function(){var d=document.documentElement,m=d.dataset.schemeDefault||'auto';"
+                  "try{m=localStorage.getItem('scriptorium-scheme')||m}catch(e){}"
+                  "d.dataset.schemeMode=m;d.dataset.scheme=m==='auto'?(matchMedia('(prefers-color-scheme: dark)')"
+                  ".matches?'dark':'light'):m})()</script>")
+
+
 def _shell(page: Page, body: str, *, site_title: str, lang: str, tree: list[dict],
-           outline: list, prev: Page | None, next: Page | None, output) -> str:
+           outline: list, prev: Page | None, next: Page | None, output,
+           version: str | None = None, logo: str | None = None, favicon: str | None = None,
+           foot: str = "", head: str = "") -> str:
     t = _strings(lang)
     title = page.title if page.kind != "index" else site_title
     head_title = _esc(title if title == site_title else f"{title} · {site_title}")
-    source = (f'<a class="source" href="{_esc(output.repo_url)}">{t["source"]}</a>'
-              if output.repo_url else "")
+    source = _repo_widget(output.repo_url, t)
+    scheme = output.palette.get("scheme", "auto")
+    logo_html = f'<img class="logo" src="{_esc(logo)}" alt="">' if logo else ""
+    version_html = (f'<span class="version" title="{t["version"]}">{_esc(version)}</span>'
+                    if version else "")
+    icon = f'\n<link rel="icon" href="{_esc(favicon)}">' if favicon else ""
+    body_class = "docs" + (" typo-docs" if output.typography == "docs" else "") + (
+        " has-primary" if output.palette.get("primary") else "")
     outline_html = ""
     if outline:
         outline_html = (f'<aside class="outline"><p>{t["on_this_page"]}</p><ul>' + "".join(
@@ -193,26 +370,28 @@ def _shell(page: Page, body: str, *, site_title: str, lang: str, tree: list[dict
     pager += "</nav>"
     scripts = "".join(f'\n<script src="{_esc(js)}" defer></script>' for js in output.js)
     return f"""<!doctype html>
-<html lang="{_esc(lang)}">
+<html lang="{_esc(lang)}" data-scheme-default="{_esc(scheme)}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{head_title}</title>
+{_SCHEME_SCRIPT}{icon}{head}
 <link rel="stylesheet" href="docs.css">
 <script src="docs.js" defer></script>{scripts}
 </head>
-<body class="docs">
+<body class="{body_class}" data-copy="{t["copy"]}" data-copied="{t["copied"]}" style="--docs-output-label: '{t["output"]}'">
 <header class="topbar">
 <button class="menu" type="button" aria-label="{t["menu"]}" aria-expanded="false">☰</button>
-<a class="site-title" href="index.html">{_esc(site_title)}</a>
+<a class="site-title" href="index.html">{logo_html}<span>{_esc(site_title)}</span></a>{version_html}
 <div class="search"><input type="search" placeholder="{t["search"]}" aria-label="{t["search"]}" autocomplete="off"><div class="search-results" data-none="{t["no_results"]}" hidden></div></div>
+<button class="scheme" type="button" aria-label="{t["scheme"]}" title="{t["scheme"]}"></button>
 {source}
 </header>
 <div class="layout">
 <nav class="sidebar" aria-label="{t["contents"]}">{_sidebar(tree, page.slug, outline)}</nav>
 <main>
 {body}
-{pager}
+{foot}{pager}
 </main>
 {outline_html}
 </div>
@@ -223,7 +402,8 @@ def _shell(page: Page, body: str, *, site_title: str, lang: str, tree: list[dict
 
 def render_docs(src: str, out_dir: Path, *, output, base_dir: Path, theme_name: str | None = None,
                 vars: dict | None = None, project_meta: dict | None = None,
-                execute: bool = True, code_root: str | None = None) -> BookReport:
+                execute: bool = True, code_root: str | None = None,
+                files: list[str] | None = None) -> BookReport:
     """Write the docs site for `src` into `out_dir`, replacing what was there."""
     from .emit import _emit_css
     from .render import prepare
@@ -261,6 +441,39 @@ def render_docs(src: str, out_dir: Path, *, output, base_dir: Path, theme_name: 
     site_title = str(p.meta.get("title") or first_h1 or "Documentation")
     lang = str(p.meta.get("lang") or p.theme.meta.get("lang") or "en")
 
+    version = resolve_version(output.version, base_dir)
+    if output.version == "auto" and not version:
+        warnings.append("version: auto found no pyproject.toml version and no git tag")
+    logo = _copy_asset(output.logo, base_dir, out_dir, "logo", warnings)
+    favicon = _copy_asset(output.favicon, base_dir, out_dir, "favicon", warnings)
+
+    t = _strings(str(p.meta.get("lang") or p.theme.meta.get("lang") or "en"))
+    sources = page_files(all_pages, files or [], base_dir)
+    base_url = str(p.meta.get("base-url") or "").rstrip("/")
+    base_url = base_url + "/" if base_url else ""
+
+    def foot_of(page) -> str:
+        bits = []
+        rel = sources.get(page.slug)
+        if rel and (day := _git(base_dir, "log", "-1", "--format=%cs", "--", rel)):
+            bits.append(f'{t["updated"]} {_esc(day)}')
+        if rel and (url := edit_url(output.repo_url, output.edit_path, rel, base_dir)):
+            bits.append(f'<a class="edit" href="{_esc(url)}">{t["edit"]}</a>')
+        left = f'<span>{" · ".join(bits)}</span>' if bits else ""
+        right = f'<span class="site-footer">{_esc(output.footer)}</span>' if output.footer else ""
+        return f'<footer class="page-foot">{left}{right}</footer>\n' if left or right else ""
+
+    def head_of(page, title: str) -> str:
+        desc = _description(page.units)
+        tags = [f'<meta property="og:title" content="{_esc(title)}">', '<meta property="og:type" content="website">']
+        if desc:
+            tags[:0] = [f'<meta name="description" content="{_esc(desc)}">']
+            tags.append(f'<meta property="og:description" content="{_esc(desc)}">')
+        if base_url:
+            url = base_url + ("" if page.slug == "index" else f"{page.slug}.html")
+            tags += [f'<link rel="canonical" href="{_esc(url)}">', f'<meta property="og:url" content="{_esc(url)}">']
+        return "\n" + "\n".join(tags)
+
     sections = []
     for page in all_pages:
         html = "".join(_unit_html(u, p.theme) for u in page.units)
@@ -284,11 +497,13 @@ def render_docs(src: str, out_dir: Path, *, output, base_dir: Path, theme_name: 
         body = collect_media(body, base_dir, out_dir)
         html = _shell(page, body, site_title=site_title, lang=lang, tree=tree, outline=outline,
                       prev=all_pages[n - 1] if n else None,
-                      next=all_pages[n + 1] if n + 1 < len(all_pages) else None, output=output)
+                      next=all_pages[n + 1] if n + 1 < len(all_pages) else None, output=output,
+                      version=version, logo=logo, favicon=favicon, foot=foot_of(page),
+                      head=head_of(page, page.title or site_title))
         (out_dir / f"{page.slug}.html").write_text(html, encoding="utf-8")
 
     css = [browser_css(collect_css_assets(_emit_css(p.theme, p.meta), out_dir)),
-           (DOCS_DIR / "docs.css").read_text(encoding="utf-8")]
+           (DOCS_DIR / "docs.css").read_text(encoding="utf-8"), palette_css(output.palette)]
     for rel in output.css:
         try:
             css.append((base_dir / rel).read_text(encoding="utf-8"))
@@ -308,6 +523,22 @@ def render_docs(src: str, out_dir: Path, *, output, base_dir: Path, theme_name: 
     (out_dir / "search.json").write_text(json.dumps(search_index(all_pages), ensure_ascii=False),
                                          encoding="utf-8")
 
+    # A host serves 404.html at any missing path, so its links need the site's
+    # address: with base-url they are absolute, without it they work at the root.
+    lost = Page("404", t["not_found"], None, [], "chapter")
+    lost_body = (f'<h1 class="unnumbered">{t["not_found"]}</h1><p>{t["not_found_text"]} '
+                 f'<a href="index.html">{_esc(site_title)}</a>.</p>')
+    html = _shell(lost, lost_body, site_title=site_title, lang=lang, tree=tree, outline=[],
+                  prev=None, next=None, output=output, version=version, logo=logo, favicon=favicon,
+                  head=f'\n<base href="{_esc(base_url)}">' if base_url else "")
+    (out_dir / "404.html").write_text(html, encoding="utf-8")
+    if base_url:
+        urls = "".join(f"<url><loc>{_esc(base_url + ('' if pg.slug == 'index' else pg.slug + '.html'))}</loc></url>"
+                       for pg in all_pages)
+        (out_dir / "sitemap.xml").write_text(
+            '<?xml version="1.0" encoding="UTF-8"?>\n'
+            f'<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">{urls}</urlset>\n', encoding="utf-8")
+
     files = [f for f in out_dir.rglob("*") if f.is_file()]
     return BookReport(files=len(files), bytes=sum(f.stat().st_size for f in files),
-                      version="", warnings=warnings)
+                      version=version or "", warnings=warnings)

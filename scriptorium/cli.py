@@ -55,9 +55,10 @@ def _render_project(args) -> int:
                 from .docs import render_docs as render_site
 
             out = args.output or (base / o.dir)
+            extra = {"files": proj.files} if o.format == "docs" else {}
             report = render_site(proj.src, out, output=o, base_dir=base, theme_name=proj.theme,
                                  vars=proj.vars, project_meta=proj.meta,
-                                 execute=not args.no_execute, code_root=proj.code_root)
+                                 execute=not args.no_execute, code_root=proj.code_root, **extra)
             _book_line(o.name, out, report)
             continue
         out = args.output or (base / o.file)

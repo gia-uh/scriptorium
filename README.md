@@ -239,7 +239,14 @@ outputs:
   site:
     format: docs
     dir: site                            # defaults to the output's name
-    repo-url: https://github.com/org/repo   # optional: a "Source" link in the top bar
+    repo-url: https://github.com/org/repo   # optional: the repository in the top bar
+    version: auto                        # optional: "1.2.1", or auto (pyproject.toml, then git tag)
+    logo: img/logo.svg                   # optional, shown before the title
+    favicon: img/favicon.png             # optional
+    palette: {primary: "#0f766e", accent: "#d97706", scheme: auto}   # optional; scheme: auto | light | dark
+    typography: docs                     # docs (default): sans, left-aligned; theme: the theme's own
+    footer: "© 2026 Org · MIT"           # optional, at the foot of every page
+    edit-path: docs/                     # optional: the docs folder in the repo; default from git
     image-max-width: 1600                # as in the html output
     css: [site.css]
     js: [site.js]
@@ -247,12 +254,34 @@ outputs:
     format: pdf
 ```
 
+The top bar carries the logo, the title, the version, search, a light/dark
+switch and the repository. The switch cycles auto, light and dark, is
+remembered in the browser, and applies before the first paint. Search
+marks the words in each result and on the page a result opens; arrow keys,
+Enter, `/` and Ctrl-K drive it from the keyboard. Every code block has a copy
+button (the code, never its output); a block that tangles (`export=`) or has
+`title="…"` shows that name in a title bar with its language, and an executed
+block's output joins the box under an "Output" label. A GitHub
+repository also shows its latest release tag and star count, fetched by the
+reader's browser and kept for an hour; another forge shows its name.
+`palette.primary` colours the bar and `palette.accent` the links. The docs
+typography sets every page in the theme's heading face (a sans), left-aligned
+and without hyphenation, whatever the theme does on paper; the PDF and the
+HTML book keep the theme's.
+
 A part heading (`# Part {.part}`) with text under it gets its own page; one
 with none is only a label in the sidebar. The site's own words (search, the
 outline's title, the source link) follow `lang:`, in English or Spanish, and a
 project's `html-refs:` (`fig: "figura {figure}"`) replaces the theme's reference
 formats in the HTML outputs. `scriptorium render chapter.md
 --format docs` builds a one-page site from a single file.
+
+Every page ends with the date of the last commit that touched its file and an
+"Edit this page" link (GitHub and GitLab repositories, when the project is in
+git). Each page carries a description from its first paragraph and Open Graph
+tags; with the project's `base-url` it also gets a canonical link, and the site
+gets `sitemap.xml`. `404.html` is always written; with `base-url` its links are
+absolute, so a host can serve it at any missing path.
 
 The site is plain files with relative URLs, no service worker and no server
 code: copy the directory to any static host (GitHub Pages, an S3 bucket, a
@@ -286,6 +315,14 @@ All six `extend` a `base` theme; build your own by extending any of them. See
 
 - **Components** — `::: finding amber {title="Risk"}` renders a theme component;
   `::: {.two-col}` is a plain styled div. Themes ship their own vocabulary.
+- **Admonitions** — `::: note`, `tip`, `info`, `warning`, `danger` and `example`,
+  with an optional `{title="…"}`; without one the box is titled with its kind, in
+  English or Spanish (`lang:`). `::: warning collapse` is a closed `<details>` on the
+  docs site and prints open.
+- **Tabs** — `:::: tabs` around `::: tab {title="pip"}` blocks. The docs site
+  switches between them and remembers the choice by title across tab sets and
+  pages; print and the HTML book show every tab under its title. Code inside a
+  component is highlighted but does not run.
 - **Code** — `python {run}` executes; `{export=path}` tangles; `{run export=path}`
   does both; `{python}` is Quarto-compatible. Blocks run independently; mark a
   block `continue` (`{python continue}`, `python {run continue}`) to run it on top

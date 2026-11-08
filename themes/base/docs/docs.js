@@ -1,5 +1,6 @@
 // The docs page script: the drawer on a phone, the outline entry of the
-// section in view, and the / key to search.
+// section in view, search and its keys, the colour scheme toggle, and the
+// repository's latest tag and stars.
 (function () {
   "use strict";
   const body = document.body;
@@ -51,14 +52,52 @@
 
   // Search: the index is fetched on the box's first focus. Every query word
   // must be a prefix of a word in the entry; a word in the title scores 2,
-  // one only in the text scores 1.
+  // one only in the text scores 1. Results show a snippet around the first
+  // match, matches are marked, arrow keys move, Enter opens, and the page a
+  // result opens marks the words too (?h= in its link).
   const results = document.querySelector(".topbar .search-results");
-  let index = null, loading = false;
+  const box = document.querySelector(".topbar .search");
+  let index = null, loading = false, selected = -1;
   const words = function (s) { return s.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean); };
+  const escapeRe = function (s) { return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); };
+  const prefixRe = function (query) {
+    return new RegExp("(?<![\\p{L}\\p{N}])(" + query.map(escapeRe).join("|") + ")[\\p{L}\\p{N}]*", "giu");
+  };
+
+  // Append `text` to `el`, wrapping each match of `re` in <mark>; never innerHTML.
+  function marked(el, text, re) {
+    let last = 0;
+    re.lastIndex = 0;
+    for (let m; (m = re.exec(text));) {
+      el.appendChild(document.createTextNode(text.slice(last, m.index)));
+      const mk = document.createElement("mark");
+      mk.textContent = m[0];
+      el.appendChild(mk);
+      last = m.index + m[0].length;
+    }
+    el.appendChild(document.createTextNode(text.slice(last)));
+  }
+
+  function snippet(text, re) {
+    re.lastIndex = 0;
+    const m = re.exec(text);
+    if (!m) return text.slice(0, 120) + (text.length > 120 ? "…" : "");
+    const start = Math.max(0, m.index - 40);
+    return (start ? "…" : "") + text.slice(start, start + 140) + (start + 140 < text.length ? "…" : "");
+  }
+
+  function select(n) {
+    const links = results.querySelectorAll("a");
+    if (!links.length) return;
+    selected = (n + links.length) % links.length;
+    links.forEach(function (a, i) { a.classList.toggle("selected", i === selected); });
+    links[selected].scrollIntoView({ block: "nearest" });
+  }
 
   function search() {
     const query = words(input.value);
     results.textContent = "";
+    selected = -1;
     if (!query.length || !index) { results.hidden = true; return; }
     const hits = [];
     for (const entry of index) {
@@ -76,23 +115,65 @@
       none.textContent = results.dataset.none || "No results";
       results.appendChild(none);
     }
+    const re = prefixRe(query);
+    const h = "?h=" + encodeURIComponent(query.join(" "));
     hits.slice(0, 10).forEach(function (hit) {
-      const a = document.createElement("a");
-      a.href = hit[1].url;
-      a.textContent = hit[1].title;
-      if (hit[1].page !== hit[1].title) {  // a chapter's own text needs no chapter line
+      const e = hit[1], a = document.createElement("a");
+      const hash = e.url.indexOf("#");
+      a.href = hash < 0 ? e.url + h : e.url.slice(0, hash) + h + e.url.slice(hash);
+      const title = document.createElement("strong");
+      marked(title, e.title, re);
+      a.appendChild(title);
+      if (e.page !== e.title) {  // a chapter's own text needs no chapter line
         const small = document.createElement("small");
-        small.textContent = hit[1].page;
+        small.textContent = e.page;
         a.appendChild(small);
+      }
+      if (e.text) {
+        const span = document.createElement("span");
+        span.className = "snippet";
+        marked(span, snippet(e.text, re), re);
+        a.appendChild(span);
       }
       results.appendChild(a);
     });
+    if (hits.length) select(0);
     results.hidden = false;
+  }
+
+  // The page a result opened marks the searched words in its text.
+  (function markPage() {
+    const q = new URLSearchParams(location.search).get("h");
+    const main = document.querySelector("main");
+    if (!q || !main) return;
+    const re = prefixRe(words(q));
+    const walker = document.createTreeWalker(main, NodeFilter.SHOW_TEXT, {
+      acceptNode: function (n) {
+        return n.parentElement.closest("script, style, .anchor, mark") ? NodeFilter.FILTER_REJECT
+          : NodeFilter.FILTER_ACCEPT;
+      }
+    });
+    const nodes = [];
+    for (let n; (n = walker.nextNode());) { re.lastIndex = 0; if (re.test(n.nodeValue)) nodes.push(n); }
+    nodes.forEach(function (n) {
+      const frag = document.createDocumentFragment();
+      marked(frag, n.nodeValue, re);
+      frag.querySelectorAll("mark").forEach(function (m) { m.className = "search-hit"; });
+      n.parentNode.replaceChild(frag, n);
+    });
+    history.replaceState(null, "", location.pathname + location.hash);
+  })();
+
+  function clearPageMarks() {
+    document.querySelectorAll("mark.search-hit").forEach(function (m) {
+      m.replaceWith(document.createTextNode(m.textContent));
+    });
   }
 
   if (input && results) {
     // a failed fetch (offline, or a site opened from file://) is retried on the next focus
     input.addEventListener("focus", function () {
+      box.classList.add("open");
       if (index || loading) return;
       loading = true;
       fetch("search.json").then(function (r) {
@@ -105,22 +186,166 @@
         search();
       }).catch(function () {}).finally(function () { loading = false; });
     });
-    input.addEventListener("input", search);
+    input.addEventListener("input", function () { clearPageMarks(); search(); });
     input.addEventListener("keydown", function (e) {
-      if (e.key === "Escape") { results.hidden = true; input.blur(); }
-      if (e.key === "Enter") {
-        const first = results.querySelector("a");
-        if (first) location.href = first.href;
+      if (e.key === "Escape") { results.hidden = true; box.classList.remove("open"); input.blur(); }
+      else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        select(selected + (e.key === "ArrowDown" ? 1 : -1));
+      } else if (e.key === "Enter") {
+        const links = results.querySelectorAll("a");
+        const pick = links[selected >= 0 ? selected : 0];
+        if (pick) location.href = pick.href;
       }
     });
     document.addEventListener("click", function (e) {
-      if (!e.target.closest(".topbar .search")) results.hidden = true;
+      if (!e.target.closest(".topbar .search")) { results.hidden = true; box.classList.remove("open"); }
     });
   }
 
+  // The scheme toggle cycles auto, light, dark. The inline script in <head>
+  // applied the stored choice before the first paint; this keeps it current.
+  const root = document.documentElement;
+  const system = window.matchMedia("(prefers-color-scheme: dark)");
+  function applyScheme(mode) {
+    root.dataset.schemeMode = mode;
+    root.dataset.scheme = mode === "auto" ? (system.matches ? "dark" : "light") : mode;
+  }
+  const toggle = document.querySelector(".topbar .scheme");
+  if (toggle) {
+    toggle.addEventListener("click", function () {
+      const order = ["auto", "light", "dark"];
+      const mode = order[(order.indexOf(root.dataset.schemeMode || "auto") + 1) % order.length];
+      try { localStorage.setItem("scriptorium-scheme", mode); } catch (e) { /* storage off */ }
+      applyScheme(mode);
+    });
+  }
+  system.addEventListener("change", function () {
+    if ((root.dataset.schemeMode || "auto") === "auto") applyScheme("auto");
+  });
+
+  // A GitHub repository shows its latest tag and stars, from the GitHub API,
+  // kept for an hour in sessionStorage. When a request fails, only the name shows.
+  const repo = document.querySelector(".topbar .repo[data-github]");
+  if (repo) {
+    const slug = repo.dataset.github, key = "scriptorium-repo:" + slug;
+    const show = function (facts) {
+      const parts = [];
+      if (facts.tag) parts.push(facts.tag);
+      if (typeof facts.stars === "number") parts.push("★ " + facts.stars);
+      const small = repo.querySelector(".repo-facts");
+      if (small && parts.length) { small.textContent = parts.join(" · "); small.hidden = false; }
+    };
+    let cached = null;
+    try { cached = JSON.parse(sessionStorage.getItem(key) || "null"); } catch (e) { /* storage off */ }
+    if (cached && Date.now() - cached.at < 3600 * 1000) show(cached);
+    else {
+      const get = function (path) {
+        return fetch("https://api.github.com/repos/" + slug + path).then(function (r) {
+          return r.ok ? r.json() : null;
+        }).catch(function () { return null; });
+      };
+      Promise.all([get(""), get("/releases?per_page=1")]).then(function (res) {
+        const facts = { at: Date.now(), stars: res[0] ? res[0].stargazers_count : undefined,
+                        tag: res[1] && res[1][0] ? res[1][0].tag_name : undefined };
+        if (facts.stars === undefined && facts.tag === undefined) return;  // try again next page
+        try { sessionStorage.setItem(key, JSON.stringify(facts)); } catch (e) { /* storage off */ }
+        show(facts);
+      });
+    }
+  }
+
+  // A collapsible admonition (`::: note collapse`) prints open and becomes a
+  // closed <details> on the site.
+  document.querySelectorAll("main .admonition.collapse").forEach(function (box) {
+    const details = document.createElement("details");
+    details.className = box.className;
+    const title = box.querySelector(".admonition-title");
+    const summary = document.createElement("summary");
+    summary.className = "admonition-title";
+    if (title) summary.textContent = title.textContent;
+    details.appendChild(summary);
+    const content = box.querySelector(".admonition-body");
+    if (content) details.appendChild(content);
+    box.replaceWith(details);
+  });
+
+  // Tabs switch on the site. A choice is remembered by its title and applies
+  // to every tab set that has a tab with that title, here and on later pages.
+  const tabSets = Array.from(document.querySelectorAll("main .tabs"));
+  function chooseTab(title) {
+    tabSets.forEach(function (set) {
+      const tabs = Array.from(set.querySelectorAll(":scope > .tab"));
+      if (!tabs.some(function (t) { return t.dataset.title === title; })) return;
+      tabs.forEach(function (t) { t.classList.toggle("on", t.dataset.title === title); });
+      set.querySelectorAll(":scope > .tablist button").forEach(function (b) {
+        b.setAttribute("aria-selected", String(b.textContent === title));
+      });
+    });
+  }
+  tabSets.forEach(function (set) {
+    const tabs = Array.from(set.querySelectorAll(":scope > .tab"));
+    if (!tabs.length) return;
+    const list = document.createElement("div");
+    list.className = "tablist";
+    list.setAttribute("role", "tablist");
+    tabs.forEach(function (tab, i) {
+      const title = (tab.querySelector(":scope > .tab-title") || {}).textContent || String(i + 1);
+      tab.dataset.title = title;
+      const b = document.createElement("button");
+      b.type = "button";
+      b.setAttribute("role", "tab");
+      b.textContent = title;
+      b.addEventListener("click", function () {
+        try { localStorage.setItem("scriptorium-tab", title); } catch (e) { /* storage off */ }
+        chooseTab(title);
+      });
+      list.appendChild(b);
+    });
+    set.insertBefore(list, set.firstChild);
+    set.classList.add("ready");
+    const first = tabs[0].dataset.title;
+    tabs.forEach(function (t) { t.classList.toggle("on", t.dataset.title === first); });
+    list.firstChild.setAttribute("aria-selected", "true");
+  });
+  try {
+    const stored = localStorage.getItem("scriptorium-tab");
+    if (stored) chooseTab(stored);
+  } catch (e) { /* storage off */ }
+
+  // A copy button on every code block: it copies the code, never its output.
+  document.querySelectorAll("main .codeblock").forEach(function (block) {
+    const src = block.querySelector(".code-src");
+    if (!src) return;
+    const file = block.querySelector(".code-file");
+    if (file && block.dataset.lang) {
+      const lang = document.createElement("span");
+      lang.className = "code-lang";
+      lang.textContent = block.dataset.lang;
+      file.appendChild(lang);
+    }
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "copy";
+    button.textContent = body.dataset.copy || "Copy";
+    button.addEventListener("click", function () {
+      const done = function () {
+        button.textContent = body.dataset.copied || "Copied";
+        setTimeout(function () { button.textContent = body.dataset.copy || "Copy"; }, 1500);
+      };
+      const text = src.innerText.replace(/\n$/, "");
+      if (navigator.clipboard) navigator.clipboard.writeText(text).then(done, function () {});
+    });
+    block.appendChild(button);
+  });
+
+  // "/" focuses search outside a text field; Ctrl-K and Cmd-K anywhere.
   document.addEventListener("keydown", function (e) {
-    if (e.key !== "/" || !input || e.target.closest("input, textarea, [contenteditable]")) return;
+    if (!input) return;
+    const k = (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k";
+    if (!k && (e.key !== "/" || e.target.closest("input, textarea, [contenteditable]"))) return;
     e.preventDefault();
     input.focus();
+    input.select();
   });
 })();

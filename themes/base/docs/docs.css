@@ -1,33 +1,39 @@
 /* The docs layout: a top bar with search, a sidebar of parts and chapters,
    the page, and an outline of its sections. Colours come from the theme's
-   vars, so the site looks like the project's PDF. Three columns above
-   1100 px, two above 640 px, and below that one column with the sidebar in
-   a drawer under the menu button. */
+   vars, so the site looks like the project's PDF, and a project's palette
+   overrides them. Three columns above 1100 px, two above 640 px, and below
+   that one column with the sidebar in a drawer under the menu button.
+
+   The scheme is <html data-scheme="light|dark">, set before the first paint
+   by an inline script from the reader's choice, the project's, or the
+   system's. */
 
 :root {
   --docs-bg: #fff; --docs-panel: #f8f9fa; --docs-top: 3.25rem;
   --docs-ink: var(--ink, #1a1a1a); --docs-muted: var(--muted, #6b7280);
   --docs-rule: var(--rule, #e5e7eb); --docs-accent: var(--accent, #2563eb);
+  --docs-primary: var(--docs-bg); --docs-on-primary: var(--docs-ink);
 }
-@media (prefers-color-scheme: dark) {
+:root[data-scheme="dark"] {
   /* the theme colours its text through the same vars, so they turn too */
-  :root { --docs-bg: #16181d; --docs-panel: #1d2026; color-scheme: dark;
-          --ink: #e6e6e6; --muted: #9aa3ae; --rule: #2e333b; --accent: #7aa7ff; --accent-dark: #9dbcff; }
-  body.docs main pre, body.docs main code { background: #22262d; color: inherit; }
-  /* a code block's frame takes the theme's --wash, which stays light; and Pygments'
-     default colours are for paper. These follow its token classes by their first letter. */
-  body.docs main :is(.hl, pre.output) { background: #22262d; border-color: var(--rule); }
-  body.docs .hl :is([class^="k"], .ow) { color: #c792ea; font-weight: normal; }
-  body.docs .hl [class^="s"] { color: #c3e88d; }
-  body.docs .hl [class^="m"] { color: #f78c6c; }
-  body.docs .hl [class^="c"] { color: #7f8796; }
-  body.docs .hl :is(.nf, .nc, .fm) { color: #82aaff; }
-  body.docs .hl :is(.nb, .bp) { color: #ffcb6b; }
-  body.docs .hl .o { color: #89ddff; }
-  body.docs .hl :is(.n, .nn, .p, .w, .nv, .vm, .na) { color: inherit; }
-  /* themes darken headings from their own scales, which vanish on dark */
-  body.docs main :is(h1, h2, h3, h4, h5, h6, figcaption, th) { color: inherit; }
+  --docs-bg: #16181d; --docs-panel: #1d2026; color-scheme: dark;
+  --ink: #e6e6e6; --muted: #9aa3ae; --rule: #2e333b; --accent: #7aa7ff; --accent-dark: #9dbcff;
+  --docs-accent: #7aa7ff;
 }
+[data-scheme="dark"] body.docs main pre, [data-scheme="dark"] body.docs main code { background: #22262d; color: inherit; }
+/* a code block's frame takes the theme's --wash, which stays light; and Pygments'
+   default colours are for paper. These follow its token classes by their first letter. */
+[data-scheme="dark"] body.docs main :is(.hl, pre.output) { background: #22262d; border-color: var(--rule); }
+[data-scheme="dark"] body.docs .hl :is([class^="k"], .ow) { color: #c792ea; font-weight: normal; }
+[data-scheme="dark"] body.docs .hl [class^="s"] { color: #c3e88d; }
+[data-scheme="dark"] body.docs .hl [class^="m"] { color: #f78c6c; }
+[data-scheme="dark"] body.docs .hl [class^="c"] { color: #7f8796; }
+[data-scheme="dark"] body.docs .hl :is(.nf, .nc, .fm) { color: #82aaff; }
+[data-scheme="dark"] body.docs .hl :is(.nb, .bp) { color: #ffcb6b; }
+[data-scheme="dark"] body.docs .hl .o { color: #89ddff; }
+[data-scheme="dark"] body.docs .hl :is(.n, .nn, .p, .w, .nv, .vm, .na) { color: inherit; }
+/* themes darken headings from their own scales, which vanish on dark */
+[data-scheme="dark"] body.docs main :is(h1, h2, h3, h4, h5, h6, figcaption, th) { color: inherit; }
 
 html { scroll-padding-top: calc(var(--docs-top) + 1rem); -webkit-text-size-adjust: 100%; }
 body.docs { margin: 0; background: var(--docs-bg); color: var(--docs-ink);
@@ -46,13 +52,39 @@ body.docs a { color: var(--docs-accent); }
 .topbar .search input { width: 100%; box-sizing: border-box; font: inherit; font-size: .9rem;
                         padding: .35rem .6rem; border: 1px solid var(--docs-rule); border-radius: 6px;
                         background: var(--docs-panel); color: var(--docs-ink); }
-.topbar .source { font-size: .9rem; white-space: nowrap; }
+/* a palette's primary colours the bar; its text and controls turn white */
+body.docs.has-primary .topbar { background: var(--docs-primary); border-bottom-color: transparent; --docs-on-primary: #fff; }
+body.docs.has-primary .topbar :is(.site-title, .menu, .scheme, .repo, .version) { color: #fff !important; }
+body.docs.has-primary .topbar .search input { background: rgba(255,255,255,.16); border-color: transparent; color: #fff; }
+body.docs.has-primary .topbar .search input::placeholder { color: rgba(255,255,255,.75); }
+.topbar .site-title { display: flex; align-items: center; gap: .5rem; }
+.topbar .logo { height: 1.6rem; width: auto; flex: none; }
+.topbar .version { font-size: .75rem; font-family: var(--mono-font, monospace), monospace; color: var(--docs-muted);
+                   border: 1px solid currentColor; border-radius: 999px; padding: 0 .45rem; white-space: nowrap; opacity: .85; }
+.topbar .scheme { flex: none; width: 2rem; height: 2rem; font: inherit; font-size: 1.05rem; line-height: 1;
+                  background: none; border: 0; border-radius: 6px; color: var(--docs-ink); cursor: pointer; }
+.topbar .scheme:hover { background: var(--docs-panel); }
+body.docs.has-primary .topbar .scheme:hover { background: rgba(255,255,255,.14); }
+.topbar .scheme::before { content: "◐"; }
+[data-scheme-mode="light"] .topbar .scheme::before { content: "☀"; }
+[data-scheme-mode="dark"] .topbar .scheme::before { content: "☾"; }
+.topbar .repo { display: flex; align-items: center; gap: .5rem; font-size: .85rem; line-height: 1.2;
+                white-space: nowrap; text-decoration: none; color: var(--docs-ink) !important; }
+.topbar .repo svg { width: 1.35rem; height: 1.35rem; fill: currentColor; flex: none; }
+.topbar .repo small { display: block; font-size: .72rem; opacity: .75; }
 .search-results { position: absolute; right: 0; top: calc(100% + .35rem); width: min(26rem, calc(100vw - 2rem));
                   max-height: 70vh; overflow-y: auto; background: var(--docs-bg);
                   border: 1px solid var(--docs-rule); border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,.15); }
 .search-results a { display: block; padding: .5rem .75rem; text-decoration: none; border-bottom: 1px solid var(--docs-rule); }
 .search-results a:hover, .search-results a:focus { background: var(--docs-panel); }
 .search-results a small { display: block; color: var(--docs-muted); }
+.search-results a strong { display: block; font-weight: 600; }
+.search-results { hyphens: manual; -webkit-hyphens: manual; text-align: left; }
+.search-results a .snippet { display: block; margin-top: .15rem; font-size: .82rem; line-height: 1.4; overflow-wrap: anywhere;
+                             color: var(--docs-muted); }
+.search-results a.selected { background: var(--docs-panel); box-shadow: inset 3px 0 0 var(--docs-accent); }
+.search-results mark, mark.search-hit { background: color-mix(in srgb, var(--docs-accent) 28%, transparent);
+                                        color: inherit; border-radius: 2px; padding: 0 1px; }
 .search-results p { margin: 0; padding: .5rem .75rem; color: var(--docs-muted); }
 
 /* the three columns */
@@ -76,6 +108,12 @@ body.docs .outline a { display: block; padding: .15rem 0 .15rem .75rem; border-l
 .outline .h3 a { padding-left: 1.5rem; }
 body.docs .outline a.active { color: var(--docs-accent); border-left-color: var(--docs-accent); }
 
+/* docs typography: the theme's colours, but screen text — left-aligned, not
+   hyphenated, in the theme's heading face (a sans in every shipped theme) */
+body.docs.typo-docs { font-family: var(--heading-font, 'Inter'), 'Inter', system-ui, sans-serif; }
+body.docs.typo-docs main :is(p, li, dd, dt, blockquote, td, figcaption) {
+  text-align: left; hyphens: manual; -webkit-hyphens: manual; font-family: inherit; }
+
 /* the page */
 body.docs main { min-width: 0; padding: 1.5rem 0 4rem; }
 body.docs main img, body.docs main svg, body.docs main video { max-width: 100%; height: auto; }
@@ -83,6 +121,33 @@ body.docs main pre { overflow-x: auto; max-width: 100%; font-size: .85rem; line-
 /* the themes wrap code for paper; on screen a long line scrolls instead */
 body.docs main pre, body.docs main .hl pre { white-space: pre; word-break: normal; overflow-wrap: normal; }
 body.docs main table { display: block; max-width: 100%; overflow-x: auto; }
+
+/* code blocks: a title bar from export= or title=, a copy button, the output
+   joined under its code with a label, and a scrollbar you can see */
+body.docs .codeblock { position: relative; margin: 1rem 0; }
+body.docs .codeblock .hl { margin: 0; }
+body.docs .code-file { display: flex; justify-content: space-between; gap: 1rem; margin: 0; padding: .3rem .8rem;
+                       font-size: .78rem; color: var(--docs-muted); background: var(--docs-panel);
+                       border: 1px solid var(--docs-rule); border-bottom: 0; border-radius: 6px 6px 0 0; }
+body.docs .code-file + .code-src .hl { border-top-left-radius: 0; border-top-right-radius: 0; }
+body.docs .codeblock .copy { position: absolute; right: .5rem; top: .5rem; z-index: 1; font: inherit; font-size: .75rem;
+                             padding: .1rem .5rem; border: 1px solid var(--docs-rule); border-radius: 4px; cursor: pointer;
+                             background: var(--docs-bg); color: var(--docs-muted); opacity: 0; transition: opacity .15s; }
+body.docs .code-file ~ .copy { top: 2.2rem; }
+body.docs .codeblock:hover .copy, body.docs .codeblock .copy:focus { opacity: 1; }
+/* every unit is wrapped in div.unit, so the join reaches across the wrappers */
+body.docs .unit:has(> .codeblock):has(+ .unit > pre.output),
+body.docs .unit:has(> .codeblock):has(+ .unit > pre.output) .codeblock { margin-bottom: 0; }
+body.docs .unit:has(> .codeblock) + .unit > pre.output { margin-top: -1px; border-top: 1px dashed var(--docs-rule);
+                                                        border-top-left-radius: 0; border-top-right-radius: 0; }
+body.docs .unit:has(> .codeblock):has(+ .unit > pre.output) .hl { border-bottom-left-radius: 0;
+                                                                  border-bottom-right-radius: 0; }
+body.docs pre.output::before { content: var(--docs-output-label, "Output"); display: block; margin-bottom: .2rem;
+                               font-size: .68rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+                               color: var(--docs-muted); }
+body.docs main pre { scrollbar-width: thin; scrollbar-color: var(--docs-rule) transparent; }
+body.docs main pre::-webkit-scrollbar { height: 8px; }
+body.docs main pre::-webkit-scrollbar-thumb { background: var(--docs-rule); border-radius: 4px; }
 body.docs main h1, body.docs main h2, body.docs main h3 { break-before: auto; }
 .anchor { margin-left: .4em; text-decoration: none; color: var(--docs-muted) !important; opacity: 0; }
 h2:hover > .anchor, h3:hover > .anchor, .anchor:focus { opacity: 1; }
@@ -102,9 +167,18 @@ figure.audio audio { width: 100%; max-width: 32rem; }
 }
 @media (max-width: 640px) {
   .topbar .menu { display: block; }
-  .topbar .source { display: none; }
+  .topbar .repo-name, .topbar .version { display: none; }
+  .topbar .site-title span { display: none; }
+  .topbar .site-title:not(:has(.logo)) span { display: inline; }
   .layout { display: block; padding: 0 1rem; }
   .topbar .search { flex-basis: 11rem; }
+  /* focused, the box covers the bar and its results take the screen's width */
+  .topbar .search.open { position: absolute; left: .5rem; right: .5rem; top: .5rem; margin: 0; z-index: 25; }
+  body.docs.has-primary .topbar .search.open input { background: var(--docs-bg); color: var(--docs-ink); }
+  body.docs.has-primary .topbar .search.open input::placeholder { color: var(--docs-muted); }
+  .topbar .search.open .search-results { position: fixed; left: .5rem; right: .5rem; width: auto;
+                                         top: calc(var(--docs-top) + .25rem);
+                                         max-height: calc(100vh - var(--docs-top) - 1rem); }
   .sidebar { position: fixed; top: var(--docs-top); left: 0; z-index: 15; width: min(85vw, 300px);
              height: calc(100vh - var(--docs-top)); max-height: none; padding: 1rem; background: var(--docs-bg); border-right: 1px solid var(--docs-rule);
              transform: translateX(-100%); visibility: hidden; transition: transform .2s ease, visibility .2s; }
@@ -113,6 +187,29 @@ figure.audio audio { width: 100%; max-width: 32rem; }
                             background: rgba(0,0,0,.35); }
 }
 @media (pointer: coarse) {
+  body.docs .codeblock .copy { opacity: 1; min-height: 32px; }
+  .topbar .scheme, .topbar .repo { min-width: 44px; min-height: 44px; justify-content: center; }
   .sidebar a, .outline a, .search-results a, .pager a, .topbar .menu { min-height: 44px; box-sizing: border-box;
                                                                        display: flex; flex-direction: column; justify-content: center; }
 }
+
+/* admonitions and tabs on the site: a collapsible note is a <details>, tabs
+   switch, and on dark the tinted backgrounds come from each kind's colour */
+body.docs .admonition { border-radius: 6px; padding: .6rem .9rem; margin: .25rem 0; }
+body.docs details.admonition > summary { cursor: pointer; list-style-position: outside; margin-left: 1rem; }
+body.docs details.admonition > summary.admonition-title { margin-bottom: 0; }
+body.docs details.admonition[open] > summary.admonition-title { margin-bottom: .3rem; }
+[data-scheme="dark"] body.docs .admonition { background: color-mix(in srgb, var(--adm) 14%, transparent); }
+[data-scheme="dark"] body.docs .admonition-title { color: color-mix(in srgb, var(--adm) 55%, #fff); }
+body.docs .tabs.ready .tab-title { display: none; }
+body.docs .tabs.ready .tab:not(.on) { display: none; }
+body.docs .tablist { display: flex; flex-wrap: wrap; gap: .25rem; border-bottom: 1px solid var(--docs-rule); margin-bottom: .6rem; }
+body.docs .tablist button { font: inherit; font-size: .85rem; background: none; border: 0; border-bottom: 2px solid transparent;
+                            padding: .35rem .7rem; margin-bottom: -1px; color: var(--docs-muted); cursor: pointer; }
+body.docs .tablist button[aria-selected="true"] { color: var(--docs-accent); border-bottom-color: var(--docs-accent); font-weight: 600; }
+@media (pointer: coarse) { body.docs .tablist button { min-height: 44px; } }
+
+/* the page foot: last updated, edit this page, and the project's footer text */
+.page-foot { display: flex; justify-content: space-between; flex-wrap: wrap; gap: .5rem 1rem; margin-top: 3rem;
+             font-size: .82rem; color: var(--docs-muted); }
+.page-foot + .pager { margin-top: 1rem; }

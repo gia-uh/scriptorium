@@ -64,6 +64,31 @@ are resolved, so a reference to a section reads its title without the `#`.
 The site's `docs.css` is the theme's CSS through `browser_css()`, then the
 layout, then the output's own `css:` files, so a project can restyle anything.
 
+## The top bar and the scheme
+
+`_shell()` builds the bar: logo (`logo.<ext>` copied next to the pages),
+title, version (`resolve_version()`: a literal, or `auto` from the nearest
+`pyproject.toml`, then `git describe --tags`), search, the scheme button and
+`_repo_widget()`. Only a `github.com` URL gets `data-github`, which makes
+`docs.js` ask the GitHub API for the stars and the latest release; a failed
+request is not cached, so the next page tries again.
+
+The scheme is `<html data-scheme="light|dark">` with `data-scheme-mode`
+(`auto|light|dark`). `_SCHEME_SCRIPT` sets both inline in `<head>`, before the
+stylesheet, from `localStorage["scriptorium-scheme"]`, the project's
+`palette.scheme`, or `prefers-color-scheme`. Every dark rule in `docs.css` is
+keyed on `[data-scheme="dark"]`, not on the media query: a media query would
+ignore the reader's choice. `palette_css()` appends the palette after the
+layout, on both `:root` and `:root[data-scheme="dark"]`, so it wins in both.
+
+`typography: docs` adds `typo-docs` to `<body>`; the rule sits on `body.docs`
+so it outranks a theme's bare `body` font, and on the text blocks for
+alignment and hyphenation.
+
+When you preview a change on a real project, install the working tree
+editable (`uv run --with-editable <scriptorium>`): `--with <path>` installs a
+cached copy and the site keeps the old `docs.css`.
+
 ## Search
 
 `search_index()` writes one entry per `##` and `###` section, and one for a
@@ -73,6 +98,38 @@ the box's first focus, and again on a later focus if that fetch failed. Every
 query word must be a prefix of a word in the entry; a title word scores 2, a
 text word 1; the first ten show, with the chapter under each when it differs
 from the title.
+
+Results show the chapter under the section title and a snippet of about 140
+characters around the first match, with every match in `<mark>`; all of it is
+built with text nodes, never `innerHTML`, because the index holds page text.
+Arrow keys move `.selected`, Enter opens it, Escape closes, and `/` (outside a
+text field), Ctrl-K and Cmd-K focus the box. A result's link carries `?h=<the
+words>`; the page it opens wraps prefix matches in `main` in
+`mark.search-hit` and drops `?h=` from the address with `replaceState`. Below
+640 px the focused box (`.search.open`) covers the bar and the results take the
+screen's width.
+
+## Code blocks
+
+`parse._code_units()` gives every echoed block `data-lang` and, when it
+tangles or has `title=`, a `.code-file` label; `docs.js` adds the language to
+that label and a `.copy` button that copies `.code-src` only. Every unit is
+wrapped in `div.unit`, so the rule that joins an output to its code is
+`.unit:has(> .codeblock) + .unit > pre.output`, and the theme's `.unit` bottom
+margin has to go too; a plain `.codeblock + pre.output` never matches. The
+"Output" label is `pre.output::before { content: var(--docs-output-label) }`,
+set on `<body>` from the site's language.
+
+## The page foot and the site files
+
+`page_files()` maps each page to its chapter file by matching the files' `#`
+headings (outside code fences) to the page titles in order; the CLI passes the
+project's `files:` for this. Files are joined with `\newpage`, but counting
+breaks would fail on a chapter that has its own. From the file come the date
+(`git log -1 --format=%cs`) and `edit_url()` (`/edit/HEAD/<prefix><file>` on
+GitHub, `/-/edit/HEAD/…` on GitLab, where the prefix is `edit-path` or `git
+rev-parse --show-prefix`). `404.html` has a `<base href>` only when `base-url`
+is set; `sitemap.xml` is written only then.
 
 ## Testing
 
