@@ -255,6 +255,64 @@
     }
   }
 
+  // A collapsible admonition (`::: note collapse`) prints open and becomes a
+  // closed <details> on the site.
+  document.querySelectorAll("main .admonition.collapse").forEach(function (box) {
+    const details = document.createElement("details");
+    details.className = box.className;
+    const title = box.querySelector(".admonition-title");
+    const summary = document.createElement("summary");
+    summary.className = "admonition-title";
+    if (title) summary.textContent = title.textContent;
+    details.appendChild(summary);
+    const content = box.querySelector(".admonition-body");
+    if (content) details.appendChild(content);
+    box.replaceWith(details);
+  });
+
+  // Tabs switch on the site. A choice is remembered by its title and applies
+  // to every tab set that has a tab with that title, here and on later pages.
+  const tabSets = Array.from(document.querySelectorAll("main .tabs"));
+  function chooseTab(title) {
+    tabSets.forEach(function (set) {
+      const tabs = Array.from(set.querySelectorAll(":scope > .tab"));
+      if (!tabs.some(function (t) { return t.dataset.title === title; })) return;
+      tabs.forEach(function (t) { t.classList.toggle("on", t.dataset.title === title); });
+      set.querySelectorAll(":scope > .tablist button").forEach(function (b) {
+        b.setAttribute("aria-selected", String(b.textContent === title));
+      });
+    });
+  }
+  tabSets.forEach(function (set) {
+    const tabs = Array.from(set.querySelectorAll(":scope > .tab"));
+    if (!tabs.length) return;
+    const list = document.createElement("div");
+    list.className = "tablist";
+    list.setAttribute("role", "tablist");
+    tabs.forEach(function (tab, i) {
+      const title = (tab.querySelector(":scope > .tab-title") || {}).textContent || String(i + 1);
+      tab.dataset.title = title;
+      const b = document.createElement("button");
+      b.type = "button";
+      b.setAttribute("role", "tab");
+      b.textContent = title;
+      b.addEventListener("click", function () {
+        try { localStorage.setItem("scriptorium-tab", title); } catch (e) { /* storage off */ }
+        chooseTab(title);
+      });
+      list.appendChild(b);
+    });
+    set.insertBefore(list, set.firstChild);
+    set.classList.add("ready");
+    const first = tabs[0].dataset.title;
+    tabs.forEach(function (t) { t.classList.toggle("on", t.dataset.title === first); });
+    list.firstChild.setAttribute("aria-selected", "true");
+  });
+  try {
+    const stored = localStorage.getItem("scriptorium-tab");
+    if (stored) chooseTab(stored);
+  } catch (e) { /* storage off */ }
+
   // A copy button on every code block: it copies the code, never its output.
   document.querySelectorAll("main .codeblock").forEach(function (block) {
     const src = block.querySelector(".code-src");

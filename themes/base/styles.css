@@ -229,3 +229,35 @@ code { hyphens: none; overflow-wrap: break-word; }
 /* `footnotes: page` — WeasyPrint's GCPM footnote area, ruled off from the body */
 .footnote-inline { float: footnote; font-size: 9pt; }
 @page { @footnote { border-top: 0.3mm solid #e5e7eb; margin-top: 4mm; padding-top: 2mm; } }
+
+/* admonitions: ::: note | tip | info | warning | danger | example {title="…"}.
+   An empty title takes the kind's name, in English or Spanish. In print a
+   collapsible one (`collapse`) is simply open. */
+.admonition { --adm:#2563eb; --adm-bg:#eff6ff; margin:3mm 0; padding:2mm 3.5mm; border-left:2.5pt solid var(--adm);
+  background:var(--adm-bg); border-radius:2pt; break-inside:avoid; }
+.admonition.tip { --adm:#059669; --adm-bg:#ecfdf5; }
+.admonition.info { --adm:#0891b2; --adm-bg:#ecfeff; }
+.admonition.warning { --adm:#d97706; --adm-bg:#fffbeb; }
+.admonition.danger { --adm:#dc2626; --adm-bg:#fef2f2; }
+.admonition.example { --adm:#7c3aed; --adm-bg:#f5f3ff; }
+.admonition-title { margin:0 0 1mm; font-family:var(--heading-font), sans-serif; font-weight:700; font-size:0.9em; color:var(--adm); }
+.admonition-body > :first-child { margin-top:0; }
+.admonition-body > :last-child { margin-bottom:0; }
+.admonition.note .admonition-title:empty::before { content:"Note"; }
+.admonition.tip .admonition-title:empty::before { content:"Tip"; }
+.admonition.info .admonition-title:empty::before { content:"Info"; }
+.admonition.warning .admonition-title:empty::before { content:"Warning"; }
+.admonition.danger .admonition-title:empty::before { content:"Danger"; }
+.admonition.example .admonition-title:empty::before { content:"Example"; }
+:lang(es) .admonition.note .admonition-title:empty::before { content:"Nota"; }
+:lang(es) .admonition.tip .admonition-title:empty::before { content:"Consejo"; }
+:lang(es) .admonition.info .admonition-title:empty::before { content:"Información"; }
+:lang(es) .admonition.warning .admonition-title:empty::before { content:"Advertencia"; }
+:lang(es) .admonition.danger .admonition-title:empty::before { content:"Peligro"; }
+:lang(es) .admonition.example .admonition-title:empty::before { content:"Ejemplo"; }
+
+/* tabs: :::: tabs around ::: tab {title="…"}. In print every tab shows,
+   one after another under its title; the docs site makes them switch. */
+.tabs { margin:3mm 0; }
+.tab-title { margin:2mm 0 1mm; font-family:var(--heading-font), sans-serif; font-weight:700; font-size:0.85em; color:var(--muted); }
+.tab-body > :first-child { margin-top:0; }

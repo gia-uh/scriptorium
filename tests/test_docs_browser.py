@@ -278,3 +278,38 @@ def test_code_blocks_fit_a_phone(browser, code_url):
     assert page.evaluate("document.documentElement.scrollWidth") <= 390
     assert page.is_visible("main .codeblock .copy")  # no hover on a phone, so it always shows
     ctx.close()
+
+
+@pytest.fixture(scope="module")
+def adm_url(tmp_path_factory, serve):
+    """Two pages, each with a tab set titled pip / uv, and a collapsed warning."""
+    from scriptorium.docs import render_docs
+    from scriptorium.project import Output
+
+    tabs = ':::: tabs\n::: tab {title="pip"}\nPIP-TEXT\n:::\n::: tab {title="uv"}\nUV-TEXT\n:::\n::::\n'
+    src = ("# One {#one}\n\n" + tabs + "\n" + tabs + '\n::: warning collapse {title="Careful"}\nHIDDEN-TEXT\n:::\n\n'
+           "# Two {#two}\n\n" + tabs)
+    d = tmp_path_factory.mktemp("adm")
+    render_docs(src, d / "site", output=Output(name="site", format="docs", dir="site"), base_dir=d, execute=False)
+    return serve(d / "site")
+
+
+def test_a_collapsed_note_opens_on_click(browser, adm_url):
+    ctx, page = _open(browser, adm_url + "one.html", DESK)
+    assert page.evaluate("document.querySelector('details.admonition.warning').open") is False
+    assert not page.is_visible("text=HIDDEN-TEXT")
+    page.click("details.admonition summary")
+    assert page.is_visible("text=HIDDEN-TEXT")
+    ctx.close()
+
+
+def test_tabs_switch_together_and_the_choice_is_remembered(browser, adm_url):
+    ctx, page = _open(browser, adm_url + "one.html", DESK)
+    assert page.locator("text=PIP-TEXT").first.is_visible() and not page.locator("text=UV-TEXT").first.is_visible()
+    page.locator(".tablist button", has_text="uv").first.click()
+    visible = page.evaluate("[...document.querySelectorAll('.tab')].filter(t => t.offsetParent).map(t => t.dataset.title)")
+    assert visible == ["uv", "uv"]
+    page.goto(adm_url + "two.html")
+    assert page.locator("text=UV-TEXT").is_visible() and not page.locator("text=PIP-TEXT").is_visible()
+    assert page.errors == []
+    ctx.close()

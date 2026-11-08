@@ -192,3 +192,19 @@ figure.audio audio { width: 100%; max-width: 32rem; }
   .sidebar a, .outline a, .search-results a, .pager a, .topbar .menu { min-height: 44px; box-sizing: border-box;
                                                                        display: flex; flex-direction: column; justify-content: center; }
 }
+
+/* admonitions and tabs on the site: a collapsible note is a <details>, tabs
+   switch, and on dark the tinted backgrounds come from each kind's colour */
+body.docs .admonition { border-radius: 6px; padding: .6rem .9rem; margin: .25rem 0; }
+body.docs details.admonition > summary { cursor: pointer; list-style-position: outside; margin-left: 1rem; }
+body.docs details.admonition > summary.admonition-title { margin-bottom: 0; }
+body.docs details.admonition[open] > summary.admonition-title { margin-bottom: .3rem; }
+[data-scheme="dark"] body.docs .admonition { background: color-mix(in srgb, var(--adm) 14%, transparent); }
+[data-scheme="dark"] body.docs .admonition-title { color: color-mix(in srgb, var(--adm) 55%, #fff); }
+body.docs .tabs.ready .tab-title { display: none; }
+body.docs .tabs.ready .tab:not(.on) { display: none; }
+body.docs .tablist { display: flex; flex-wrap: wrap; gap: .25rem; border-bottom: 1px solid var(--docs-rule); margin-bottom: .6rem; }
+body.docs .tablist button { font: inherit; font-size: .85rem; background: none; border: 0; border-bottom: 2px solid transparent;
+                            padding: .35rem .7rem; margin-bottom: -1px; color: var(--docs-muted); cursor: pointer; }
+body.docs .tablist button[aria-selected="true"] { color: var(--docs-accent); border-bottom-color: var(--docs-accent); font-weight: 600; }
+@media (pointer: coarse) { body.docs .tablist button { min-height: 44px; } }
