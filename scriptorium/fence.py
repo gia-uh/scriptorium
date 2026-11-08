@@ -36,6 +36,7 @@ class Fence:
     output_mode: str = "asis"  # "asis" | "code"
     cont: bool = False  # `continue`: run on top of the previous block's chain
     caption: str | None = None  # caption for the one thing the block displays
+    title: str | None = None  # a label over the code, e.g. a file name
     id: str | None = None  # its id, e.g. fig-x
 
     @property
@@ -79,5 +80,6 @@ def parse_fence(info: str) -> Fence:
         f.echo = False
     f.output_mode = kv.get("output", f.output_mode)
     f.caption = kv.get("caption")
+    f.title = kv.get("title")
     f.id = kv.get("id")
     return f

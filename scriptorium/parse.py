@@ -331,9 +331,12 @@ def _code_units(info, body, theme, env, cursor, stem) -> list[Unit]:
         end = start + n - 1
         cursor[path] = end
         label = f'<span class="code-file">{escape(path)} · L{start}–{end}</span>'
+    elif f.title:
+        label = f'<span class="code-file">{escape(f.title)}</span>'
     if f.echo:
         block = f'<span class="code-src">{highlight(body, f.lang)}</span>'
-        units.append(Unit(html=f'<div class="codeblock">{label}{block}</div>', name="code",
+        lang = f' data-lang="{escape(f.lang)}"' if f.lang else ""
+        units.append(Unit(html=f'<div class="codeblock"{lang}>{label}{block}</div>', name="code",
                           splittable=True, code_src=body, code_lang=f.lang, code_label=label))
     if f.run and env is not None:
         res = env.run(body, f.lang, cont=f.cont)

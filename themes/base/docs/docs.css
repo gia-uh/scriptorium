@@ -121,6 +121,33 @@ body.docs main pre { overflow-x: auto; max-width: 100%; font-size: .85rem; line-
 /* the themes wrap code for paper; on screen a long line scrolls instead */
 body.docs main pre, body.docs main .hl pre { white-space: pre; word-break: normal; overflow-wrap: normal; }
 body.docs main table { display: block; max-width: 100%; overflow-x: auto; }
+
+/* code blocks: a title bar from export= or title=, a copy button, the output
+   joined under its code with a label, and a scrollbar you can see */
+body.docs .codeblock { position: relative; margin: 1rem 0; }
+body.docs .codeblock .hl { margin: 0; }
+body.docs .code-file { display: flex; justify-content: space-between; gap: 1rem; margin: 0; padding: .3rem .8rem;
+                       font-size: .78rem; color: var(--docs-muted); background: var(--docs-panel);
+                       border: 1px solid var(--docs-rule); border-bottom: 0; border-radius: 6px 6px 0 0; }
+body.docs .code-file + .code-src .hl { border-top-left-radius: 0; border-top-right-radius: 0; }
+body.docs .codeblock .copy { position: absolute; right: .5rem; top: .5rem; z-index: 1; font: inherit; font-size: .75rem;
+                             padding: .1rem .5rem; border: 1px solid var(--docs-rule); border-radius: 4px; cursor: pointer;
+                             background: var(--docs-bg); color: var(--docs-muted); opacity: 0; transition: opacity .15s; }
+body.docs .code-file ~ .copy { top: 2.2rem; }
+body.docs .codeblock:hover .copy, body.docs .codeblock .copy:focus { opacity: 1; }
+/* every unit is wrapped in div.unit, so the join reaches across the wrappers */
+body.docs .unit:has(> .codeblock):has(+ .unit > pre.output),
+body.docs .unit:has(> .codeblock):has(+ .unit > pre.output) .codeblock { margin-bottom: 0; }
+body.docs .unit:has(> .codeblock) + .unit > pre.output { margin-top: -1px; border-top: 1px dashed var(--docs-rule);
+                                                        border-top-left-radius: 0; border-top-right-radius: 0; }
+body.docs .unit:has(> .codeblock):has(+ .unit > pre.output) .hl { border-bottom-left-radius: 0;
+                                                                  border-bottom-right-radius: 0; }
+body.docs pre.output::before { content: var(--docs-output-label, "Output"); display: block; margin-bottom: .2rem;
+                               font-size: .68rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+                               color: var(--docs-muted); }
+body.docs main pre { scrollbar-width: thin; scrollbar-color: var(--docs-rule) transparent; }
+body.docs main pre::-webkit-scrollbar { height: 8px; }
+body.docs main pre::-webkit-scrollbar-thumb { background: var(--docs-rule); border-radius: 4px; }
 body.docs main h1, body.docs main h2, body.docs main h3 { break-before: auto; }
 .anchor { margin-left: .4em; text-decoration: none; color: var(--docs-muted) !important; opacity: 0; }
 h2:hover > .anchor, h3:hover > .anchor, .anchor:focus { opacity: 1; }
@@ -160,6 +187,7 @@ figure.audio audio { width: 100%; max-width: 32rem; }
                             background: rgba(0,0,0,.35); }
 }
 @media (pointer: coarse) {
+  body.docs .codeblock .copy { opacity: 1; min-height: 32px; }
   .topbar .scheme, .topbar .repo { min-width: 44px; min-height: 44px; justify-content: center; }
   .sidebar a, .outline a, .search-results a, .pager a, .topbar .menu { min-height: 44px; box-sizing: border-box;
                                                                        display: flex; flex-direction: column; justify-content: center; }

@@ -166,10 +166,12 @@ def _contents(tree: list[dict]) -> str:
 STRINGS = {
     "en": {"search": "Search", "on_this_page": "On this page", "source": "Source",
            "menu": "Menu", "contents": "Contents", "no_results": "No results",
-           "scheme": "Colour scheme", "version": "Version"},
+           "scheme": "Colour scheme", "version": "Version",
+           "copy": "Copy", "copied": "Copied", "output": "Output"},
     "es": {"search": "Buscar", "on_this_page": "En esta página", "source": "Código fuente",
            "menu": "Menú", "contents": "Índice", "no_results": "Sin resultados",
-           "scheme": "Esquema de color", "version": "Versión"},
+           "scheme": "Esquema de color", "version": "Versión",
+           "copy": "Copiar", "copied": "Copiado", "output": "Salida"},
 }
 
 
@@ -304,7 +306,7 @@ def _shell(page: Page, body: str, *, site_title: str, lang: str, tree: list[dict
 <link rel="stylesheet" href="docs.css">
 <script src="docs.js" defer></script>{scripts}
 </head>
-<body class="{body_class}">
+<body class="{body_class}" data-copy="{t["copy"]}" data-copied="{t["copied"]}" style="--docs-output-label: '{t["output"]}'">
 <header class="topbar">
 <button class="menu" type="button" aria-label="{t["menu"]}" aria-expanded="false">☰</button>
 <a class="site-title" href="index.html">{logo_html}<span>{_esc(site_title)}</span></a>{version_html}

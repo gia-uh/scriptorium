@@ -255,6 +255,32 @@
     }
   }
 
+  // A copy button on every code block: it copies the code, never its output.
+  document.querySelectorAll("main .codeblock").forEach(function (block) {
+    const src = block.querySelector(".code-src");
+    if (!src) return;
+    const file = block.querySelector(".code-file");
+    if (file && block.dataset.lang) {
+      const lang = document.createElement("span");
+      lang.className = "code-lang";
+      lang.textContent = block.dataset.lang;
+      file.appendChild(lang);
+    }
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "copy";
+    button.textContent = body.dataset.copy || "Copy";
+    button.addEventListener("click", function () {
+      const done = function () {
+        button.textContent = body.dataset.copied || "Copied";
+        setTimeout(function () { button.textContent = body.dataset.copy || "Copy"; }, 1500);
+      };
+      const text = src.innerText.replace(/\n$/, "");
+      if (navigator.clipboard) navigator.clipboard.writeText(text).then(done, function () {});
+    });
+    block.appendChild(button);
+  });
+
   // "/" focuses search outside a text field; Ctrl-K and Cmd-K anywhere.
   document.addEventListener("keydown", function (e) {
     if (!input) return;

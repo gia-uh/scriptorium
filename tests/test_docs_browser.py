@@ -231,3 +231,50 @@ def test_the_phone_search_takes_the_whole_bar(browser, url):
     assert box[0] > 350 and box[1] > 350
     assert page.evaluate("document.documentElement.scrollWidth") <= 390
     ctx.close()
+
+
+@pytest.fixture(scope="module")
+def code_url(tmp_path_factory, serve):
+    """A page with an executed, exported block: its title, its output, a copy button."""
+    from scriptorium.docs import render_docs
+    from scriptorium.project import Output
+
+    d = tmp_path_factory.mktemp("code")
+    src = ('# Code {#code}\n\n```{python export=examples/hello.py}\nprint("hello")\n```\n\n'
+           '```text\n' + "x" * 300 + '\n```\n')
+    render_docs(src, d / "site", output=Output(name="site", format="docs", dir="site"),
+                base_dir=d, execute=True)
+    return serve(d / "site")
+
+
+def test_copy_takes_the_code_and_not_its_output(browser, code_url):
+    ctx = browser.new_context(**DESK, permissions=["clipboard-read", "clipboard-write"])
+    page = ctx.new_page()
+    page.goto(code_url + "code.html")
+    page.hover("main .codeblock")
+    page.click("main .codeblock .copy")
+    page.wait_for_function("document.querySelector('main .codeblock .copy').textContent === 'Copied'")
+    assert page.evaluate("navigator.clipboard.readText()") == 'print("hello")'
+    ctx.close()
+
+
+def test_the_title_bar_and_the_output_label(browser, code_url):
+    ctx, page = _open(browser, code_url + "code.html", DESK)
+    assert page.inner_text("main .code-file .code-lang") == "python"
+    assert page.inner_text("main .code-file").startswith("examples/hello.py")
+    label = page.evaluate("getComputedStyle(document.querySelector('main pre.output'), '::before').content")
+    assert label == '"Output"'
+    assert page.inner_text("main pre.output").strip().endswith("hello")
+    joined = page.evaluate("(() => { const o = document.querySelector('main pre.output').getBoundingClientRect();"
+                           " const c = document.querySelector('main .codeblock .hl').getBoundingClientRect();"
+                           " return [Math.round(o.top - c.bottom),"
+                           " getComputedStyle(document.querySelector('main pre.output')).borderTopStyle]; })()")
+    assert joined[0] <= 0 and joined[1] == "dashed"
+    ctx.close()
+
+
+def test_code_blocks_fit_a_phone(browser, code_url):
+    ctx, page = _open(browser, code_url + "code.html", PHONE)
+    assert page.evaluate("document.documentElement.scrollWidth") <= 390
+    assert page.is_visible("main .codeblock .copy")  # no hover on a phone, so it always shows
+    ctx.close()

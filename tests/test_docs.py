@@ -200,7 +200,7 @@ def test_palette_and_typography(tmp_path):
     assert 'data-scheme-default="dark"' in page and 'class="docs typo-docs has-primary"' in page
     assert "--docs-primary: #0f766e;" in css and "--docs-accent: #d97706;" in css
     plain = (_site_with(tmp_path / "b", typography="theme") / "one.html").read_text()
-    assert '<body class="docs">' in plain and 'data-scheme-default="auto"' in plain
+    assert '<body class="docs" ' in plain and 'data-scheme-default="auto"' in plain
 
 
 def test_a_project_rejects_a_bad_palette_or_typography(tmp_path):
@@ -214,3 +214,15 @@ def test_a_project_rejects_a_bad_palette_or_typography(tmp_path):
         "outputs:\n  site:\n    format: docs\n    version: 1.2\n    logo: l.svg\n    palette: {primary: '#111'}\n")
     out = load(tmp_path / "scriptorium.yaml").outputs[0]
     assert (out.version, out.logo, out.palette, out.typography) == ("1.2", "l.svg", {"primary": "#111"}, "docs")
+
+
+def test_a_code_title_and_its_language(tmp_path):
+    src = '# One {#one}\n\n```python {title="setup.py"}\nx = 1\n```\n\n```bash\nls\n```\n'
+    from scriptorium.docs import render_docs
+    from scriptorium.project import Output
+    out = tmp_path / "site"
+    render_docs(src, out, output=Output(name="site", format="docs", dir="site"), base_dir=tmp_path, execute=False)
+    page = (out / "one.html").read_text()
+    assert '<div class="codeblock" data-lang="python"><span class="code-file">setup.py</span>' in page
+    assert '<div class="codeblock" data-lang="bash"><span class="code-src">' in page
+    assert 'data-copy="Copy"' in page and "--docs-output-label: 'Output'" in page
