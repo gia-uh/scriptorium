@@ -120,6 +120,17 @@ margin has to go too; a plain `.codeblock + pre.output` never matches. The
 "Output" label is `pre.output::before { content: var(--docs-output-label) }`,
 set on `<body>` from the site's language.
 
+## The page foot and the site files
+
+`page_files()` maps each page to its chapter file by matching the files' `#`
+headings (outside code fences) to the page titles in order; the CLI passes the
+project's `files:` for this. Files are joined with `\newpage`, but counting
+breaks would fail on a chapter that has its own. From the file come the date
+(`git log -1 --format=%cs`) and `edit_url()` (`/edit/HEAD/<prefix><file>` on
+GitHub, `/-/edit/HEAD/…` on GitLab, where the prefix is `edit-path` or `git
+rev-parse --show-prefix`). `404.html` has a `<base href>` only when `base-url`
+is set; `sitemap.xml` is written only then.
+
 ## Testing
 
 `tests/test_docs.py` builds a small site (two parts, one without text, two

@@ -245,6 +245,8 @@ outputs:
     favicon: img/favicon.png             # optional
     palette: {primary: "#0f766e", accent: "#d97706", scheme: auto}   # optional; scheme: auto | light | dark
     typography: docs                     # docs (default): sans, left-aligned; theme: the theme's own
+    footer: "© 2026 Org · MIT"           # optional, at the foot of every page
+    edit-path: docs/                     # optional: the docs folder in the repo; default from git
     image-max-width: 1600                # as in the html output
     css: [site.css]
     js: [site.js]
@@ -273,6 +275,13 @@ outline's title, the source link) follow `lang:`, in English or Spanish, and a
 project's `html-refs:` (`fig: "figura {figure}"`) replaces the theme's reference
 formats in the HTML outputs. `scriptorium render chapter.md
 --format docs` builds a one-page site from a single file.
+
+Every page ends with the date of the last commit that touched its file and an
+"Edit this page" link (GitHub and GitLab repositories, when the project is in
+git). Each page carries a description from its first paragraph and Open Graph
+tags; with the project's `base-url` it also gets a canonical link, and the site
+gets `sitemap.xml`. `404.html` is always written; with `base-url` its links are
+absolute, so a host can serve it at any missing path.
 
 The site is plain files with relative URLs, no service worker and no server
 code: copy the directory to any static host (GitHub Pages, an S3 bucket, a
