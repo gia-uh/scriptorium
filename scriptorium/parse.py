@@ -56,6 +56,18 @@ _md.renderer.rules["math_block"] = lambda t, i, o, e: render_display(t[i].conten
 _md.renderer.rules["math_block_label"] = lambda t, i, o, e: render_display(t[i].content)
 
 
+def _fence_html(tokens, idx, options, env) -> str:
+    """A code fence inside a component body (a tab, a note): highlighted like a
+    block in the flow, but never run. Fences in the flow never reach markdown-it."""
+    tok = tokens[idx]
+    lang = tok.info.strip().split()[0].strip("{}") if tok.info.strip() else ""
+    attr = f' data-lang="{escape(lang)}"' if lang else ""
+    return f'<div class="codeblock"{attr}><span class="code-src">{highlight(tok.content, lang)}</span></div>'
+
+
+_md.renderer.rules["fence"] = _fence_html
+
+
 def _mark_audio_figures(state):
     """An audio link alone in its paragraph becomes a figure: hide the <p>.
 
@@ -174,16 +186,18 @@ def _split_nodes(src: str):
                 buf = []
             fence, info = m.group(1), m.group(2)
             name, mods, attrs = _parse_info(info)
-            depth, j, inner = 1, i + 1, []
+            # each open container's fence length: a bare fence closes the innermost
+            # one when it is at least as long, so `::::` can hold `:::` blocks
+            stack, j, inner = [len(fence)], i + 1, []
             while j < len(lines):
                 m2 = _FENCE.match(lines[j])
                 if m2:
-                    if not m2.group(2) and len(m2.group(1)) >= len(fence):
-                        depth -= 1
-                        if depth == 0:
+                    if not m2.group(2) and len(m2.group(1)) >= stack[-1]:
+                        stack.pop()
+                        if not stack:
                             break
                     elif m2.group(2):
-                        depth += 1
+                        stack.append(len(m2.group(1)))
                 inner.append(lines[j])
                 j += 1
             nodes.append(("container", name, mods, attrs, "\n".join(inner)))
@@ -308,6 +322,9 @@ def _component_html(name, mods, attrs, inner, theme: Theme, meta: dict | None = 
         # values (author lists) pass through raw for template sections.
         props = dict(meta or {})
         props.update(attrs)
+        # attr.<key> is only what the block itself wrote, with no metadata
+        # default: an admonition's {{attr.title}} must not become the document's title
+        props.update({f"attr.{k}": v for k, v in attrs.items()})
         props.setdefault("variant", " ".join(mods))
         props["content"] = _unwrap_p(_render_fragment(inner, theme, meta))
         return theme.render(name, props)
