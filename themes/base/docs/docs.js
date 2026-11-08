@@ -52,14 +52,52 @@
 
   // Search: the index is fetched on the box's first focus. Every query word
   // must be a prefix of a word in the entry; a word in the title scores 2,
-  // one only in the text scores 1.
+  // one only in the text scores 1. Results show a snippet around the first
+  // match, matches are marked, arrow keys move, Enter opens, and the page a
+  // result opens marks the words too (?h= in its link).
   const results = document.querySelector(".topbar .search-results");
-  let index = null, loading = false;
+  const box = document.querySelector(".topbar .search");
+  let index = null, loading = false, selected = -1;
   const words = function (s) { return s.toLowerCase().split(/[^\p{L}\p{N}]+/u).filter(Boolean); };
+  const escapeRe = function (s) { return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); };
+  const prefixRe = function (query) {
+    return new RegExp("(?<![\\p{L}\\p{N}])(" + query.map(escapeRe).join("|") + ")[\\p{L}\\p{N}]*", "giu");
+  };
+
+  // Append `text` to `el`, wrapping each match of `re` in <mark>; never innerHTML.
+  function marked(el, text, re) {
+    let last = 0;
+    re.lastIndex = 0;
+    for (let m; (m = re.exec(text));) {
+      el.appendChild(document.createTextNode(text.slice(last, m.index)));
+      const mk = document.createElement("mark");
+      mk.textContent = m[0];
+      el.appendChild(mk);
+      last = m.index + m[0].length;
+    }
+    el.appendChild(document.createTextNode(text.slice(last)));
+  }
+
+  function snippet(text, re) {
+    re.lastIndex = 0;
+    const m = re.exec(text);
+    if (!m) return text.slice(0, 120) + (text.length > 120 ? "…" : "");
+    const start = Math.max(0, m.index - 40);
+    return (start ? "…" : "") + text.slice(start, start + 140) + (start + 140 < text.length ? "…" : "");
+  }
+
+  function select(n) {
+    const links = results.querySelectorAll("a");
+    if (!links.length) return;
+    selected = (n + links.length) % links.length;
+    links.forEach(function (a, i) { a.classList.toggle("selected", i === selected); });
+    links[selected].scrollIntoView({ block: "nearest" });
+  }
 
   function search() {
     const query = words(input.value);
     results.textContent = "";
+    selected = -1;
     if (!query.length || !index) { results.hidden = true; return; }
     const hits = [];
     for (const entry of index) {
@@ -77,23 +115,65 @@
       none.textContent = results.dataset.none || "No results";
       results.appendChild(none);
     }
+    const re = prefixRe(query);
+    const h = "?h=" + encodeURIComponent(query.join(" "));
     hits.slice(0, 10).forEach(function (hit) {
-      const a = document.createElement("a");
-      a.href = hit[1].url;
-      a.textContent = hit[1].title;
-      if (hit[1].page !== hit[1].title) {  // a chapter's own text needs no chapter line
+      const e = hit[1], a = document.createElement("a");
+      const hash = e.url.indexOf("#");
+      a.href = hash < 0 ? e.url + h : e.url.slice(0, hash) + h + e.url.slice(hash);
+      const title = document.createElement("strong");
+      marked(title, e.title, re);
+      a.appendChild(title);
+      if (e.page !== e.title) {  // a chapter's own text needs no chapter line
         const small = document.createElement("small");
-        small.textContent = hit[1].page;
+        small.textContent = e.page;
         a.appendChild(small);
+      }
+      if (e.text) {
+        const span = document.createElement("span");
+        span.className = "snippet";
+        marked(span, snippet(e.text, re), re);
+        a.appendChild(span);
       }
       results.appendChild(a);
     });
+    if (hits.length) select(0);
     results.hidden = false;
+  }
+
+  // The page a result opened marks the searched words in its text.
+  (function markPage() {
+    const q = new URLSearchParams(location.search).get("h");
+    const main = document.querySelector("main");
+    if (!q || !main) return;
+    const re = prefixRe(words(q));
+    const walker = document.createTreeWalker(main, NodeFilter.SHOW_TEXT, {
+      acceptNode: function (n) {
+        return n.parentElement.closest("script, style, .anchor, mark") ? NodeFilter.FILTER_REJECT
+          : NodeFilter.FILTER_ACCEPT;
+      }
+    });
+    const nodes = [];
+    for (let n; (n = walker.nextNode());) { re.lastIndex = 0; if (re.test(n.nodeValue)) nodes.push(n); }
+    nodes.forEach(function (n) {
+      const frag = document.createDocumentFragment();
+      marked(frag, n.nodeValue, re);
+      frag.querySelectorAll("mark").forEach(function (m) { m.className = "search-hit"; });
+      n.parentNode.replaceChild(frag, n);
+    });
+    history.replaceState(null, "", location.pathname + location.hash);
+  })();
+
+  function clearPageMarks() {
+    document.querySelectorAll("mark.search-hit").forEach(function (m) {
+      m.replaceWith(document.createTextNode(m.textContent));
+    });
   }
 
   if (input && results) {
     // a failed fetch (offline, or a site opened from file://) is retried on the next focus
     input.addEventListener("focus", function () {
+      box.classList.add("open");
       if (index || loading) return;
       loading = true;
       fetch("search.json").then(function (r) {
@@ -106,16 +186,20 @@
         search();
       }).catch(function () {}).finally(function () { loading = false; });
     });
-    input.addEventListener("input", search);
+    input.addEventListener("input", function () { clearPageMarks(); search(); });
     input.addEventListener("keydown", function (e) {
-      if (e.key === "Escape") { results.hidden = true; input.blur(); }
-      if (e.key === "Enter") {
-        const first = results.querySelector("a");
-        if (first) location.href = first.href;
+      if (e.key === "Escape") { results.hidden = true; box.classList.remove("open"); input.blur(); }
+      else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        e.preventDefault();
+        select(selected + (e.key === "ArrowDown" ? 1 : -1));
+      } else if (e.key === "Enter") {
+        const links = results.querySelectorAll("a");
+        const pick = links[selected >= 0 ? selected : 0];
+        if (pick) location.href = pick.href;
       }
     });
     document.addEventListener("click", function (e) {
-      if (!e.target.closest(".topbar .search")) results.hidden = true;
+      if (!e.target.closest(".topbar .search")) { results.hidden = true; box.classList.remove("open"); }
     });
   }
 
@@ -171,9 +255,13 @@
     }
   }
 
+  // "/" focuses search outside a text field; Ctrl-K and Cmd-K anywhere.
   document.addEventListener("keydown", function (e) {
-    if (e.key !== "/" || !input || e.target.closest("input, textarea, [contenteditable]")) return;
+    if (!input) return;
+    const k = (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k";
+    if (!k && (e.key !== "/" || e.target.closest("input, textarea, [contenteditable]"))) return;
     e.preventDefault();
     input.focus();
+    input.select();
   });
 })();

@@ -78,6 +78,13 @@ body.docs.has-primary .topbar .scheme:hover { background: rgba(255,255,255,.14);
 .search-results a { display: block; padding: .5rem .75rem; text-decoration: none; border-bottom: 1px solid var(--docs-rule); }
 .search-results a:hover, .search-results a:focus { background: var(--docs-panel); }
 .search-results a small { display: block; color: var(--docs-muted); }
+.search-results a strong { display: block; font-weight: 600; }
+.search-results { hyphens: manual; -webkit-hyphens: manual; text-align: left; }
+.search-results a .snippet { display: block; margin-top: .15rem; font-size: .82rem; line-height: 1.4; overflow-wrap: anywhere;
+                             color: var(--docs-muted); }
+.search-results a.selected { background: var(--docs-panel); box-shadow: inset 3px 0 0 var(--docs-accent); }
+.search-results mark, mark.search-hit { background: color-mix(in srgb, var(--docs-accent) 28%, transparent);
+                                        color: inherit; border-radius: 2px; padding: 0 1px; }
 .search-results p { margin: 0; padding: .5rem .75rem; color: var(--docs-muted); }
 
 /* the three columns */
@@ -138,6 +145,13 @@ figure.audio audio { width: 100%; max-width: 32rem; }
   .topbar .site-title:not(:has(.logo)) span { display: inline; }
   .layout { display: block; padding: 0 1rem; }
   .topbar .search { flex-basis: 11rem; }
+  /* focused, the box covers the bar and its results take the screen's width */
+  .topbar .search.open { position: absolute; left: .5rem; right: .5rem; top: .5rem; margin: 0; z-index: 25; }
+  body.docs.has-primary .topbar .search.open input { background: var(--docs-bg); color: var(--docs-ink); }
+  body.docs.has-primary .topbar .search.open input::placeholder { color: var(--docs-muted); }
+  .topbar .search.open .search-results { position: fixed; left: .5rem; right: .5rem; width: auto;
+                                         top: calc(var(--docs-top) + .25rem);
+                                         max-height: calc(100vh - var(--docs-top) - 1rem); }
   .sidebar { position: fixed; top: var(--docs-top); left: 0; z-index: 15; width: min(85vw, 300px);
              height: calc(100vh - var(--docs-top)); max-height: none; padding: 1rem; background: var(--docs-bg); border-right: 1px solid var(--docs-rule);
              transform: translateX(-100%); visibility: hidden; transition: transform .2s ease, visibility .2s; }

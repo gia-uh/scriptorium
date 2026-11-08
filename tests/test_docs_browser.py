@@ -100,7 +100,8 @@ def test_search_finds_a_section(browser, url, device):
     page.click(".topbar .search input")
     page.keyboard.type("wav")
     page.wait_for_selector(".search-results a")
-    assert page.get_attribute(".search-results a", "href") == "what.html#waves"
+    assert page.get_attribute(".search-results a", "href") == "what.html?h=wav#waves"
+    assert page.inner_text(".search-results a mark") == "Waves"
     ctx.close()
 
 
@@ -198,4 +199,35 @@ def test_the_header_fits_a_phone(browser, chrome_url):
     assert page.evaluate("document.documentElement.scrollWidth") <= 390
     assert page.is_visible(".topbar .scheme") and page.is_visible(".topbar .repo svg")
     assert not page.is_visible(".topbar .version")
+    ctx.close()
+
+
+def test_search_keys_move_and_open_a_result(browser, url):
+    ctx, page = _open(browser, url + "index.html", DESK)
+    page.keyboard.press("Control+k")
+    assert page.evaluate("document.activeElement.matches('.topbar .search input')")
+    page.keyboard.type("pluck")
+    page.wait_for_selector(".search-results a.selected")
+    hrefs = page.eval_on_selector_all(".search-results a", "as => as.map(a => a.getAttribute('href'))")
+    assert len(hrefs) >= 2
+    page.keyboard.press("ArrowDown")
+    assert page.get_attribute(".search-results a.selected", "href") == hrefs[1]
+    page.keyboard.press("ArrowUp")
+    page.keyboard.press("Enter")
+    page.wait_for_url("**/" + hrefs[0].split("?")[0] + "*")
+    assert "?h=" not in page.url  # the page reads the words, then drops them from the address
+    assert page.inner_text("main mark.search-hit") == "Pluck"
+    ctx.close()
+
+
+def test_the_phone_search_takes_the_whole_bar(browser, url):
+    ctx, page = _open(browser, url + "what.html", PHONE)
+    page.click(".topbar .search input")
+    page.keyboard.type("wav")
+    page.wait_for_selector(".search-results a")
+    box = page.evaluate("(() => { const r = document.querySelector('.topbar .search').getBoundingClientRect();"
+                        " const s = document.querySelector('.search-results').getBoundingClientRect();"
+                        " return [r.width, s.width]; })()")
+    assert box[0] > 350 and box[1] > 350
+    assert page.evaluate("document.documentElement.scrollWidth") <= 390
     ctx.close()
