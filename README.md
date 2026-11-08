@@ -256,7 +256,10 @@ The top bar carries the logo, the title, the version, search, a light/dark
 switch and the repository. The switch cycles auto, light and dark, is
 remembered in the browser, and applies before the first paint. Search
 marks the words in each result and on the page a result opens; arrow keys,
-Enter, `/` and Ctrl-K drive it from the keyboard. A GitHub
+Enter, `/` and Ctrl-K drive it from the keyboard. Every code block has a copy
+button (the code, never its output); a block that tangles (`export=`) or has
+`title="…"` shows that name in a title bar with its language, and an executed
+block's output joins the box under an "Output" label. A GitHub
 repository also shows its latest release tag and star count, fetched by the
 reader's browser and kept for an hour; another forge shows its name.
 `palette.primary` colours the bar and `palette.accent` the links. The docs

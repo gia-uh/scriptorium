@@ -109,6 +109,17 @@ words>`; the page it opens wraps prefix matches in `main` in
 640 px the focused box (`.search.open`) covers the bar and the results take the
 screen's width.
 
+## Code blocks
+
+`parse._code_units()` gives every echoed block `data-lang` and, when it
+tangles or has `title=`, a `.code-file` label; `docs.js` adds the language to
+that label and a `.copy` button that copies `.code-src` only. Every unit is
+wrapped in `div.unit`, so the rule that joins an output to its code is
+`.unit:has(> .codeblock) + .unit > pre.output`, and the theme's `.unit` bottom
+margin has to go too; a plain `.codeblock + pre.output` never matches. The
+"Output" label is `pre.output::before { content: var(--docs-output-label) }`,
+set on `<body>` from the site's language.
+
 ## Testing
 
 `tests/test_docs.py` builds a small site (two parts, one without text, two
