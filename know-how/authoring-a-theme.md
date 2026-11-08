@@ -131,3 +131,12 @@ carry both without the reader having to guess which sequence a mark belongs to.
   via `--page-margin`. Full-page masters override padding via their own classes.
 - **CSS only** for numbering / cross-references — use counters and
   `target-counter(attr(href url), page)`, not engine logic.
+
+## Component props and the document's metadata
+
+A component's props start from the document's metadata and are overridden by
+the block's attributes, so `{{title}}` in a template is the document's title
+when the block sets none. `{{attr.<key>}}` is only what the block wrote, with no
+default: the base admonitions use `{{attr.title}}` and give an empty title its
+kind's name from CSS (`.admonition-title:empty::before`, per `:lang`).
+

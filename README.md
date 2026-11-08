@@ -306,6 +306,14 @@ All six `extend` a `base` theme; build your own by extending any of them. See
 
 - **Components** — `::: finding amber {title="Risk"}` renders a theme component;
   `::: {.two-col}` is a plain styled div. Themes ship their own vocabulary.
+- **Admonitions** — `::: note`, `tip`, `info`, `warning`, `danger` and `example`,
+  with an optional `{title="…"}`; without one the box is titled with its kind, in
+  English or Spanish (`lang:`). `::: warning collapse` is a closed `<details>` on the
+  docs site and prints open.
+- **Tabs** — `:::: tabs` around `::: tab {title="pip"}` blocks. The docs site
+  switches between them and remembers the choice by title across tab sets and
+  pages; print and the HTML book show every tab under its title. Code inside a
+  component is highlighted but does not run.
 - **Code** — `python {run}` executes; `{export=path}` tangles; `{run export=path}`
   does both; `{python}` is Quarto-compatible. Blocks run independently; mark a
   block `continue` (`{python continue}`, `python {run continue}`) to run it on top
