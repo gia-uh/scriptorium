@@ -239,13 +239,28 @@ outputs:
   site:
     format: docs
     dir: site                            # defaults to the output's name
-    repo-url: https://github.com/org/repo   # optional: a "Source" link in the top bar
+    repo-url: https://github.com/org/repo   # optional: the repository in the top bar
+    version: auto                        # optional: "1.2.1", or auto (pyproject.toml, then git tag)
+    logo: img/logo.svg                   # optional, shown before the title
+    favicon: img/favicon.png             # optional
+    palette: {primary: "#0f766e", accent: "#d97706", scheme: auto}   # optional; scheme: auto | light | dark
+    typography: docs                     # docs (default): sans, left-aligned; theme: the theme's own
     image-max-width: 1600                # as in the html output
     css: [site.css]
     js: [site.js]
   print:
     format: pdf
 ```
+
+The top bar carries the logo, the title, the version, search, a light/dark
+switch and the repository. The switch cycles auto, light and dark, is
+remembered in the browser, and applies before the first paint. A GitHub
+repository also shows its latest release tag and star count, fetched by the
+reader's browser and kept for an hour; another forge shows its name.
+`palette.primary` colours the bar and `palette.accent` the links. The docs
+typography sets every page in the theme's heading face (a sans), left-aligned
+and without hyphenation, whatever the theme does on paper; the PDF and the
+HTML book keep the theme's.
 
 A part heading (`# Part {.part}`) with text under it gets its own page; one
 with none is only a label in the sidebar. The site's own words (search, the

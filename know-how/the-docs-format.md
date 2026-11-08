@@ -64,6 +64,31 @@ are resolved, so a reference to a section reads its title without the `#`.
 The site's `docs.css` is the theme's CSS through `browser_css()`, then the
 layout, then the output's own `css:` files, so a project can restyle anything.
 
+## The top bar and the scheme
+
+`_shell()` builds the bar: logo (`logo.<ext>` copied next to the pages),
+title, version (`resolve_version()`: a literal, or `auto` from the nearest
+`pyproject.toml`, then `git describe --tags`), search, the scheme button and
+`_repo_widget()`. Only a `github.com` URL gets `data-github`, which makes
+`docs.js` ask the GitHub API for the stars and the latest release; a failed
+request is not cached, so the next page tries again.
+
+The scheme is `<html data-scheme="light|dark">` with `data-scheme-mode`
+(`auto|light|dark`). `_SCHEME_SCRIPT` sets both inline in `<head>`, before the
+stylesheet, from `localStorage["scriptorium-scheme"]`, the project's
+`palette.scheme`, or `prefers-color-scheme`. Every dark rule in `docs.css` is
+keyed on `[data-scheme="dark"]`, not on the media query: a media query would
+ignore the reader's choice. `palette_css()` appends the palette after the
+layout, on both `:root` and `:root[data-scheme="dark"]`, so it wins in both.
+
+`typography: docs` adds `typo-docs` to `<body>`; the rule sits on `body.docs`
+so it outranks a theme's bare `body` font, and on the text blocks for
+alignment and hyphenation.
+
+When you preview a change on a real project, install the working tree
+editable (`uv run --with-editable <scriptorium>`): `--with <path>` installs a
+cached copy and the site keeps the old `docs.css`.
+
 ## Search
 
 `search_index()` writes one entry per `##` and `###` section, and one for a
