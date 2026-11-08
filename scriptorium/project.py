@@ -36,6 +36,11 @@ class Output:
     js: list[str] = field(default_factory=list)
     css: list[str] = field(default_factory=list)
     repo_url: str | None = None
+    logo: str | None = None
+    favicon: str | None = None
+    version: str | None = None  # a version string, or "auto"
+    palette: dict = field(default_factory=dict)  # primary, accent, scheme
+    typography: str = "docs"  # "docs" | "theme"
 
 
 # the keys each format accepts; anything else is a typo or a key for the
@@ -44,8 +49,11 @@ _OUTPUT_KEYS = {
     "pdf": {"format", "file", "page", "vars"},
     "html": {"format", "dir", "vars", "cover", "image-max-width", "image-quality",
              "offline-images", "offline-media", "js", "css"},
-    "docs": {"format", "dir", "vars", "image-max-width", "image-quality", "js", "css", "repo-url"},
+    "docs": {"format", "dir", "vars", "image-max-width", "image-quality", "js", "css", "repo-url",
+             "logo", "favicon", "version", "palette", "typography"},
 }
+_PALETTE_KEYS = {"primary", "accent", "scheme"}
+_SCHEMES = ("auto", "light", "dark")
 
 
 def _outputs(spec) -> list[Output]:
@@ -63,6 +71,14 @@ def _outputs(spec) -> list[Output]:
         if unknown:
             raise ProjectError(f"outputs.{name}: unknown key(s) for a {fmt} output: "
                                + ", ".join(unknown))
+        palette = cfg.get("palette") or {}
+        if not isinstance(palette, dict) or set(palette) - _PALETTE_KEYS:
+            raise ProjectError(f"outputs.{name}.palette: expected a mapping of "
+                               + ", ".join(sorted(_PALETTE_KEYS)))
+        if palette.get("scheme", "auto") not in _SCHEMES:
+            raise ProjectError(f"outputs.{name}.palette.scheme: expected one of " + ", ".join(_SCHEMES))
+        if cfg.get("typography", "docs") not in ("docs", "theme"):
+            raise ProjectError(f"outputs.{name}.typography: expected docs or theme")
         outs.append(Output(
             name=name, format=fmt,
             file=cfg.get("file", f"{name}.pdf") if fmt == "pdf" else None,
@@ -73,7 +89,10 @@ def _outputs(spec) -> list[Output]:
             offline_images=bool(cfg.get("offline-images", True)),
             offline_media=bool(cfg.get("offline-media", False)),
             js=list(cfg.get("js") or []), css=list(cfg.get("css") or []),
-            repo_url=cfg.get("repo-url"),
+            repo_url=cfg.get("repo-url"), logo=cfg.get("logo"), favicon=cfg.get("favicon"),
+            version=None if cfg.get("version") is None else str(cfg["version"]),
+            palette={k: str(v) for k, v in palette.items()},
+            typography=cfg.get("typography", "docs"),
         ))
     return outs
 

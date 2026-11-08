@@ -153,5 +153,64 @@ def test_spanish_site_chrome_and_project_html_refs(tmp_path):
                 project_meta={"lang": "es", "html-refs": {"fig": "figura {figure}"}})
     page = (out / "uno.html").read_text(encoding="utf-8")
     assert 'placeholder="Buscar"' in page and "En esta página" in page
-    assert ">Código fuente<" in page and 'data-none="Sin resultados"' in page
+    assert 'title="Código fuente"' in page and 'data-none="Sin resultados"' in page
     assert "figura 1" in page and "Un pie largo que no debe citarse entero.</a>" not in page
+
+
+def _site_with(tmp_path, **output):
+    from scriptorium.docs import render_docs
+    from scriptorium.project import Output
+
+    out = tmp_path / "site"
+    render_docs("# One {#one}\n\n## A section {#a}\n\nText.\n", out,
+                output=Output(name="site", format="docs", dir="site", **output),
+                base_dir=tmp_path, theme_name="book", execute=False)
+    return out
+
+
+def test_the_header_shows_logo_version_and_a_github_repository(tmp_path):
+    (tmp_path / "mark.svg").write_text('<svg xmlns="http://www.w3.org/2000/svg"/>')
+    (tmp_path / "icon.png").write_bytes(b"\x89PNG\r\n\x1a\n")
+    out = _site_with(tmp_path, logo="mark.svg", favicon="icon.png", version="1.2.1",
+                     repo_url="https://github.com/gia-uh/purely")
+    page = (out / "one.html").read_text(encoding="utf-8")
+    assert (out / "logo.svg").is_file() and '<img class="logo" src="logo.svg"' in page
+    assert (out / "favicon.png").is_file() and '<link rel="icon" href="favicon.png">' in page
+    assert '<span class="version" title="Version">1.2.1</span>' in page
+    assert 'data-github="gia-uh/purely"' in page and ">gia-uh/purely<" in page
+
+
+def test_another_forge_gets_the_generic_mark_and_no_api(tmp_path):
+    page = (_site_with(tmp_path, repo_url="https://codeberg.org/ana/tool.git") / "one.html").read_text()
+    assert ">ana/tool<" in page and "data-github" not in page
+
+
+def test_version_auto_reads_the_nearest_pyproject(tmp_path):
+    from scriptorium.docs import resolve_version
+    (tmp_path / "pyproject.toml").write_text('[project]\nname = "x"\nversion = "3.4.5"\n')
+    (tmp_path / "docs").mkdir()
+    assert resolve_version("auto", tmp_path / "docs") == "3.4.5"
+    assert resolve_version("2.0", tmp_path / "docs") == "2.0"
+    assert resolve_version(None, tmp_path / "docs") is None
+
+
+def test_palette_and_typography(tmp_path):
+    out = _site_with(tmp_path, palette={"primary": "#0f766e", "accent": "#d97706", "scheme": "dark"})
+    page, css = (out / "one.html").read_text(), (out / "docs.css").read_text()
+    assert 'data-scheme-default="dark"' in page and 'class="docs typo-docs has-primary"' in page
+    assert "--docs-primary: #0f766e;" in css and "--docs-accent: #d97706;" in css
+    plain = (_site_with(tmp_path / "b", typography="theme") / "one.html").read_text()
+    assert '<body class="docs">' in plain and 'data-scheme-default="auto"' in plain
+
+
+def test_a_project_rejects_a_bad_palette_or_typography(tmp_path):
+    from scriptorium.project import ProjectError, load
+    for bad, msg in [("palette: {primary: red, colour: blue}", "palette"),
+                     ("palette: {scheme: sepia}", "scheme"), ("typography: serif", "typography")]:
+        (tmp_path / "scriptorium.yaml").write_text(f"outputs:\n  site:\n    format: docs\n    {bad}\n")
+        with pytest.raises(ProjectError, match=msg):
+            load(tmp_path / "scriptorium.yaml")
+    (tmp_path / "scriptorium.yaml").write_text(
+        "outputs:\n  site:\n    format: docs\n    version: 1.2\n    logo: l.svg\n    palette: {primary: '#111'}\n")
+    out = load(tmp_path / "scriptorium.yaml").outputs[0]
+    assert (out.version, out.logo, out.palette, out.typography) == ("1.2", "l.svg", {"primary": "#111"}, "docs")

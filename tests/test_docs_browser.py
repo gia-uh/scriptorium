@@ -109,3 +109,93 @@ def test_the_audio_file_loads(browser, url):
     status = page.evaluate("fetch(document.querySelector('audio').src).then(r => r.status)")
     assert status == 200 and page.get_attribute("audio", "src").startswith("media/")
     ctx.close()
+
+
+@pytest.fixture(scope="module")
+def chrome_url(tmp_path_factory, serve):
+    """A site with every header piece: logo, version, a GitHub repository and a palette."""
+    from scriptorium.docs import render_docs
+    from scriptorium.project import Output
+
+    d = tmp_path_factory.mktemp("chrome")
+    (d / "mark.svg").write_text('<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"/>')
+    render_docs("# A rather long chapter title {#one}\n\n## Part {#a}\n\nText.\n", d / "site",
+                output=Output(name="site", format="docs", dir="site", logo="mark.svg", version="10.20.30",
+                              repo_url="https://github.com/ana/a-library-with-a-long-name",
+                              palette={"primary": "#0f766e"}),
+                base_dir=d, theme_name="book", execute=False)
+    return serve(d / "site")
+
+
+def _fake_github(route):
+    body = '[{"tag_name": "v1.2.1"}]' if "/releases" in route.request.url else '{"stargazers_count": 12}'
+    route.fulfill(status=200, content_type="application/json", body=body,
+                  headers={"Access-Control-Allow-Origin": "*"})
+
+
+def test_the_scheme_toggle_cycles_and_is_remembered(browser, chrome_url):
+    ctx, page = _open(browser, chrome_url + "one.html", DESK)
+    page.route("https://api.github.com/**", _fake_github)
+    modes = []
+    for _ in range(3):
+        page.click(".topbar .scheme")
+        modes.append(page.evaluate("[document.documentElement.dataset.schemeMode, document.documentElement.dataset.scheme]"))
+    assert modes == [["light", "light"], ["dark", "dark"], ["auto", "light"]]
+    page.click(".topbar .scheme")
+    page.click(".topbar .scheme")  # dark
+    page.reload()
+    assert page.evaluate("document.documentElement.dataset.scheme") == "dark"
+    ctx.close()
+
+
+def _open_routed(browser, url, device, init=""):
+    """Open with the GitHub API faked from the first request on."""
+    ctx = browser.new_context(**device)
+    if init:
+        ctx.add_init_script(init)
+    page = ctx.new_page()
+    page.errors = []
+    page.on("pageerror", lambda e: page.errors.append(str(e)))
+    page.route("https://api.github.com/**", _fake_github)
+    page.goto(url)
+    return ctx, page
+
+
+def test_a_stored_dark_choice_applies_before_the_first_paint(browser, chrome_url):
+    init = ("try { localStorage.setItem('scriptorium-scheme', 'dark') } catch (e) {}"
+            "document.addEventListener('DOMContentLoaded', () => { window.seen = ["
+            "document.documentElement.dataset.scheme, getComputedStyle(document.body).backgroundColor] });")
+    ctx, page = _open_routed(browser, chrome_url + "one.html", DESK, init)
+    assert page.evaluate("window.seen") == ["dark", "rgb(22, 24, 29)"]
+    ctx.close()
+
+
+def test_the_repository_shows_its_latest_tag_and_stars(browser, chrome_url):
+    ctx, page = _open_routed(browser, chrome_url + "one.html", DESK)
+    page.wait_for_selector(".repo-facts:not([hidden])")
+    assert page.inner_text(".repo-facts") == "v1.2.1 · ★ 12"
+    assert page.errors == []
+    ctx.close()
+
+
+def test_a_failed_api_call_is_not_cached(browser, chrome_url):
+    ctx = browser.new_context(**DESK)
+    page = ctx.new_page()
+    page.route("https://api.github.com/**", lambda route: route.abort())
+    page.goto(chrome_url + "one.html")
+    page.wait_for_timeout(300)
+    assert page.is_hidden(".repo-facts")
+    page.unroute("https://api.github.com/**")
+    page.route("https://api.github.com/**", _fake_github)
+    page.reload()
+    page.wait_for_selector(".repo-facts:not([hidden])")
+    ctx.close()
+
+
+def test_the_header_fits_a_phone(browser, chrome_url):
+    ctx, page = _open(browser, chrome_url + "one.html", PHONE)
+    page.route("https://api.github.com/**", _fake_github)
+    assert page.evaluate("document.documentElement.scrollWidth") <= 390
+    assert page.is_visible(".topbar .scheme") and page.is_visible(".topbar .repo svg")
+    assert not page.is_visible(".topbar .version")
+    ctx.close()

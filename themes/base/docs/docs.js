@@ -1,5 +1,6 @@
 // The docs page script: the drawer on a phone, the outline entry of the
-// section in view, and the / key to search.
+// section in view, search and its keys, the colour scheme toggle, and the
+// repository's latest tag and stars.
 (function () {
   "use strict";
   const body = document.body;
@@ -116,6 +117,58 @@
     document.addEventListener("click", function (e) {
       if (!e.target.closest(".topbar .search")) results.hidden = true;
     });
+  }
+
+  // The scheme toggle cycles auto, light, dark. The inline script in <head>
+  // applied the stored choice before the first paint; this keeps it current.
+  const root = document.documentElement;
+  const system = window.matchMedia("(prefers-color-scheme: dark)");
+  function applyScheme(mode) {
+    root.dataset.schemeMode = mode;
+    root.dataset.scheme = mode === "auto" ? (system.matches ? "dark" : "light") : mode;
+  }
+  const toggle = document.querySelector(".topbar .scheme");
+  if (toggle) {
+    toggle.addEventListener("click", function () {
+      const order = ["auto", "light", "dark"];
+      const mode = order[(order.indexOf(root.dataset.schemeMode || "auto") + 1) % order.length];
+      try { localStorage.setItem("scriptorium-scheme", mode); } catch (e) { /* storage off */ }
+      applyScheme(mode);
+    });
+  }
+  system.addEventListener("change", function () {
+    if ((root.dataset.schemeMode || "auto") === "auto") applyScheme("auto");
+  });
+
+  // A GitHub repository shows its latest tag and stars, from the GitHub API,
+  // kept for an hour in sessionStorage. When a request fails, only the name shows.
+  const repo = document.querySelector(".topbar .repo[data-github]");
+  if (repo) {
+    const slug = repo.dataset.github, key = "scriptorium-repo:" + slug;
+    const show = function (facts) {
+      const parts = [];
+      if (facts.tag) parts.push(facts.tag);
+      if (typeof facts.stars === "number") parts.push("★ " + facts.stars);
+      const small = repo.querySelector(".repo-facts");
+      if (small && parts.length) { small.textContent = parts.join(" · "); small.hidden = false; }
+    };
+    let cached = null;
+    try { cached = JSON.parse(sessionStorage.getItem(key) || "null"); } catch (e) { /* storage off */ }
+    if (cached && Date.now() - cached.at < 3600 * 1000) show(cached);
+    else {
+      const get = function (path) {
+        return fetch("https://api.github.com/repos/" + slug + path).then(function (r) {
+          return r.ok ? r.json() : null;
+        }).catch(function () { return null; });
+      };
+      Promise.all([get(""), get("/releases?per_page=1")]).then(function (res) {
+        const facts = { at: Date.now(), stars: res[0] ? res[0].stargazers_count : undefined,
+                        tag: res[1] && res[1][0] ? res[1][0].tag_name : undefined };
+        if (facts.stars === undefined && facts.tag === undefined) return;  // try again next page
+        try { sessionStorage.setItem(key, JSON.stringify(facts)); } catch (e) { /* storage off */ }
+        show(facts);
+      });
+    }
   }
 
   document.addEventListener("keydown", function (e) {

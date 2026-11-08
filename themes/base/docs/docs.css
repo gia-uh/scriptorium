@@ -1,33 +1,39 @@
 /* The docs layout: a top bar with search, a sidebar of parts and chapters,
    the page, and an outline of its sections. Colours come from the theme's
-   vars, so the site looks like the project's PDF. Three columns above
-   1100 px, two above 640 px, and below that one column with the sidebar in
-   a drawer under the menu button. */
+   vars, so the site looks like the project's PDF, and a project's palette
+   overrides them. Three columns above 1100 px, two above 640 px, and below
+   that one column with the sidebar in a drawer under the menu button.
+
+   The scheme is <html data-scheme="light|dark">, set before the first paint
+   by an inline script from the reader's choice, the project's, or the
+   system's. */
 
 :root {
   --docs-bg: #fff; --docs-panel: #f8f9fa; --docs-top: 3.25rem;
   --docs-ink: var(--ink, #1a1a1a); --docs-muted: var(--muted, #6b7280);
   --docs-rule: var(--rule, #e5e7eb); --docs-accent: var(--accent, #2563eb);
+  --docs-primary: var(--docs-bg); --docs-on-primary: var(--docs-ink);
 }
-@media (prefers-color-scheme: dark) {
+:root[data-scheme="dark"] {
   /* the theme colours its text through the same vars, so they turn too */
-  :root { --docs-bg: #16181d; --docs-panel: #1d2026; color-scheme: dark;
-          --ink: #e6e6e6; --muted: #9aa3ae; --rule: #2e333b; --accent: #7aa7ff; --accent-dark: #9dbcff; }
-  body.docs main pre, body.docs main code { background: #22262d; color: inherit; }
-  /* a code block's frame takes the theme's --wash, which stays light; and Pygments'
-     default colours are for paper. These follow its token classes by their first letter. */
-  body.docs main :is(.hl, pre.output) { background: #22262d; border-color: var(--rule); }
-  body.docs .hl :is([class^="k"], .ow) { color: #c792ea; font-weight: normal; }
-  body.docs .hl [class^="s"] { color: #c3e88d; }
-  body.docs .hl [class^="m"] { color: #f78c6c; }
-  body.docs .hl [class^="c"] { color: #7f8796; }
-  body.docs .hl :is(.nf, .nc, .fm) { color: #82aaff; }
-  body.docs .hl :is(.nb, .bp) { color: #ffcb6b; }
-  body.docs .hl .o { color: #89ddff; }
-  body.docs .hl :is(.n, .nn, .p, .w, .nv, .vm, .na) { color: inherit; }
-  /* themes darken headings from their own scales, which vanish on dark */
-  body.docs main :is(h1, h2, h3, h4, h5, h6, figcaption, th) { color: inherit; }
+  --docs-bg: #16181d; --docs-panel: #1d2026; color-scheme: dark;
+  --ink: #e6e6e6; --muted: #9aa3ae; --rule: #2e333b; --accent: #7aa7ff; --accent-dark: #9dbcff;
+  --docs-accent: #7aa7ff;
 }
+[data-scheme="dark"] body.docs main pre, [data-scheme="dark"] body.docs main code { background: #22262d; color: inherit; }
+/* a code block's frame takes the theme's --wash, which stays light; and Pygments'
+   default colours are for paper. These follow its token classes by their first letter. */
+[data-scheme="dark"] body.docs main :is(.hl, pre.output) { background: #22262d; border-color: var(--rule); }
+[data-scheme="dark"] body.docs .hl :is([class^="k"], .ow) { color: #c792ea; font-weight: normal; }
+[data-scheme="dark"] body.docs .hl [class^="s"] { color: #c3e88d; }
+[data-scheme="dark"] body.docs .hl [class^="m"] { color: #f78c6c; }
+[data-scheme="dark"] body.docs .hl [class^="c"] { color: #7f8796; }
+[data-scheme="dark"] body.docs .hl :is(.nf, .nc, .fm) { color: #82aaff; }
+[data-scheme="dark"] body.docs .hl :is(.nb, .bp) { color: #ffcb6b; }
+[data-scheme="dark"] body.docs .hl .o { color: #89ddff; }
+[data-scheme="dark"] body.docs .hl :is(.n, .nn, .p, .w, .nv, .vm, .na) { color: inherit; }
+/* themes darken headings from their own scales, which vanish on dark */
+[data-scheme="dark"] body.docs main :is(h1, h2, h3, h4, h5, h6, figcaption, th) { color: inherit; }
 
 html { scroll-padding-top: calc(var(--docs-top) + 1rem); -webkit-text-size-adjust: 100%; }
 body.docs { margin: 0; background: var(--docs-bg); color: var(--docs-ink);
@@ -46,7 +52,26 @@ body.docs a { color: var(--docs-accent); }
 .topbar .search input { width: 100%; box-sizing: border-box; font: inherit; font-size: .9rem;
                         padding: .35rem .6rem; border: 1px solid var(--docs-rule); border-radius: 6px;
                         background: var(--docs-panel); color: var(--docs-ink); }
-.topbar .source { font-size: .9rem; white-space: nowrap; }
+/* a palette's primary colours the bar; its text and controls turn white */
+body.docs.has-primary .topbar { background: var(--docs-primary); border-bottom-color: transparent; --docs-on-primary: #fff; }
+body.docs.has-primary .topbar :is(.site-title, .menu, .scheme, .repo, .version) { color: #fff !important; }
+body.docs.has-primary .topbar .search input { background: rgba(255,255,255,.16); border-color: transparent; color: #fff; }
+body.docs.has-primary .topbar .search input::placeholder { color: rgba(255,255,255,.75); }
+.topbar .site-title { display: flex; align-items: center; gap: .5rem; }
+.topbar .logo { height: 1.6rem; width: auto; flex: none; }
+.topbar .version { font-size: .75rem; font-family: var(--mono-font, monospace), monospace; color: var(--docs-muted);
+                   border: 1px solid currentColor; border-radius: 999px; padding: 0 .45rem; white-space: nowrap; opacity: .85; }
+.topbar .scheme { flex: none; width: 2rem; height: 2rem; font: inherit; font-size: 1.05rem; line-height: 1;
+                  background: none; border: 0; border-radius: 6px; color: var(--docs-ink); cursor: pointer; }
+.topbar .scheme:hover { background: var(--docs-panel); }
+body.docs.has-primary .topbar .scheme:hover { background: rgba(255,255,255,.14); }
+.topbar .scheme::before { content: "◐"; }
+[data-scheme-mode="light"] .topbar .scheme::before { content: "☀"; }
+[data-scheme-mode="dark"] .topbar .scheme::before { content: "☾"; }
+.topbar .repo { display: flex; align-items: center; gap: .5rem; font-size: .85rem; line-height: 1.2;
+                white-space: nowrap; text-decoration: none; color: var(--docs-ink) !important; }
+.topbar .repo svg { width: 1.35rem; height: 1.35rem; fill: currentColor; flex: none; }
+.topbar .repo small { display: block; font-size: .72rem; opacity: .75; }
 .search-results { position: absolute; right: 0; top: calc(100% + .35rem); width: min(26rem, calc(100vw - 2rem));
                   max-height: 70vh; overflow-y: auto; background: var(--docs-bg);
                   border: 1px solid var(--docs-rule); border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,.15); }
@@ -76,6 +101,12 @@ body.docs .outline a { display: block; padding: .15rem 0 .15rem .75rem; border-l
 .outline .h3 a { padding-left: 1.5rem; }
 body.docs .outline a.active { color: var(--docs-accent); border-left-color: var(--docs-accent); }
 
+/* docs typography: the theme's colours, but screen text — left-aligned, not
+   hyphenated, in the theme's heading face (a sans in every shipped theme) */
+body.docs.typo-docs { font-family: var(--heading-font, 'Inter'), 'Inter', system-ui, sans-serif; }
+body.docs.typo-docs main :is(p, li, dd, dt, blockquote, td, figcaption) {
+  text-align: left; hyphens: manual; -webkit-hyphens: manual; font-family: inherit; }
+
 /* the page */
 body.docs main { min-width: 0; padding: 1.5rem 0 4rem; }
 body.docs main img, body.docs main svg, body.docs main video { max-width: 100%; height: auto; }
@@ -102,7 +133,9 @@ figure.audio audio { width: 100%; max-width: 32rem; }
 }
 @media (max-width: 640px) {
   .topbar .menu { display: block; }
-  .topbar .source { display: none; }
+  .topbar .repo-name, .topbar .version { display: none; }
+  .topbar .site-title span { display: none; }
+  .topbar .site-title:not(:has(.logo)) span { display: inline; }
   .layout { display: block; padding: 0 1rem; }
   .topbar .search { flex-basis: 11rem; }
   .sidebar { position: fixed; top: var(--docs-top); left: 0; z-index: 15; width: min(85vw, 300px);
@@ -113,6 +146,7 @@ figure.audio audio { width: 100%; max-width: 32rem; }
                             background: rgba(0,0,0,.35); }
 }
 @media (pointer: coarse) {
+  .topbar .scheme, .topbar .repo { min-width: 44px; min-height: 44px; justify-content: center; }
   .sidebar a, .outline a, .search-results a, .pager a, .topbar .menu { min-height: 44px; box-sizing: border-box;
                                                                        display: flex; flex-direction: column; justify-content: center; }
 }
