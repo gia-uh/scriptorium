@@ -4,6 +4,37 @@ All notable changes to this project are documented here. Format: Keep a Changelo
 
 ## [Unreleased]
 
+## [v0.14.0] - 2026-11-08
+
+### Features
+
+- **A docs site on par with MkDocs Material** (#43, #44). The top bar carries a
+  logo, the version (`version: auto` reads `pyproject.toml`), the repository
+  (with a GitHub repository's latest release and stars), a light/dark/auto
+  switch that applies before the first paint, and a `palette:` for the bar and
+  links. Docs pages set text in the theme's sans, left-aligned, unless
+  `typography: theme`.
+- **Search** shows a snippet with every match marked, moves with the arrow
+  keys, opens on Enter and focuses on Ctrl-K or Cmd-K; the page a result opens
+  marks the words. On a phone the box covers the bar.
+- **Code blocks** on the site get a copy button (the code, never its output), a
+  title bar from `export=` or the new `title=` with the language, and their
+  output joined underneath under an "Output" label.
+- **Admonitions and tabs** in the base theme, for every output: `::: note`,
+  `tip`, `info`, `warning`, `danger`, `example` (default titles in English and
+  Spanish, `collapse` for a closed box on the site) and `:::: tabs` around
+  `::: tab {title="…"}`, linked by title on the site and printed one after
+  another.
+- **Page foot and site files**: last updated from git, "Edit this page" on
+  GitHub or GitLab, a `footer:` line, a description and Open Graph tags on every
+  page, and `404.html`; with `base-url`, canonical links and `sitemap.xml`.
+
+### Fixes
+
+- `::::` around `:::` blocks no longer leaks the outer close into the content.
+- A component sees the block's own attributes as `attr.<key>`, so a title the
+  block did not set is not taken from the document's metadata.
+
 ## [v0.13.0] - 2026-11-04
 
 ### Features
