@@ -29,6 +29,16 @@ project's `scriptorium.yaml theme:`), then the document's own frontmatter
 `theme:`, then `DEFAULT_THEME`. A single `.md` that renders standalone should
 declare its theme in frontmatter — every file in `examples/` does.
 
+## A theme outside scriptorium
+
+A theme can live in the project that uses it. Any `theme:` value with a `/`, or
+starting with `.` or `~`, is a path to a theme directory (`theme:
+./theme/oikos`); a bare name is always a built-in. A relative path resolves
+against the document's directory, or the project file's. Such a theme
+`extends:` a built-in by name, or another theme by a path relative to its own
+directory, and its fonts and `url()`s resolve against its own directory as
+usual. `Theme.name` holds the resolved path.
+
 ## The customization contract (vars)
 
 Every theme honors these, injected as CSS custom properties:

@@ -117,22 +117,48 @@ def _read_dir(path: Path) -> dict:
     return out
 
 
-def _chain(name: str) -> list[Path]:
-    """Resolve the extends-chain, base-first, with a cycle guard."""
-    chain, seen, cur = [], set(), name
+def is_theme_path(name: str) -> bool:
+    """A theme named with a `/`, or starting with `.` or `~`, is a directory;
+    any other name is one of scriptorium's own themes."""
+    return "/" in name or name.startswith((".", "~"))
+
+
+def theme_dir(name: str, base: Path | None = None) -> Path:
+    """Where a theme lives: a path resolves against `base` (the document's or
+    project's directory), a bare name against scriptorium's themes."""
+    if not is_theme_path(name):
+        return THEMES_DIR / name
+    path = Path(name).expanduser()
+    if not path.is_absolute():
+        path = (base or Path.cwd()) / path
+    return path.resolve()
+
+
+def _chain(name: str, base: Path | None = None) -> list[Path]:
+    """Resolve the extends-chain, base-first, with a cycle guard. A path in
+    `extends:` resolves against the directory of the theme that names it."""
+    chain, seen, cur = [], set(), theme_dir(name, base)
     while cur and cur not in seen:
         seen.add(cur)
-        root = THEMES_DIR / cur
-        meta = yaml.safe_load((root / "theme.yml").read_text(encoding="utf-8")) or {}
+        root = cur
+        theme_yml = root / "theme.yml"
+        if not theme_yml.is_file():
+            raise FileNotFoundError(f"no theme at {root} (no theme.yml)")
+        meta = yaml.safe_load(theme_yml.read_text(encoding="utf-8")) or {}
         chain.append((root, meta))
-        cur = meta.get("extends")
+        parent = meta.get("extends")
+        cur = theme_dir(str(parent), root) if parent else None
     chain.reverse()
     return chain
 
 
-def load_theme(name: str = "report") -> Theme:
+def load_theme(name: str = "report", base: Path | None = None) -> Theme:
+    """Load a theme by name, or from a directory (see `theme_dir`)."""
     css_parts, components, masters, hints, vars = [], {}, {}, {}, {}
     meta: dict = {}
+    if is_theme_path(name):
+        # the resolved path, so a later _chain(theme.name) finds the same theme
+        name = str(theme_dir(name, base))
     for root, m in _chain(name):
         css_file = root / "styles.css"
         if css_file.exists():

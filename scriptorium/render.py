@@ -34,7 +34,7 @@ def prepare(src: str, *, theme_name: str | None = None, cwd: str | None = None,
     document renders from."""
     from .parse import frontmatter, parse
 
-    theme = load_theme(resolve_theme_name(src, theme_name))
+    theme = load_theme(resolve_theme_name(src, theme_name), Path(cwd) if cwd else None)
     if page:
         # one output's page size and margin; a copy, so no other render sees it
         theme.meta["page"] = {**theme.meta.get("page", {}), **page}
