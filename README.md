@@ -135,6 +135,11 @@ code: { root: src }     # tangle target + PYTHONPATH for executed code
 `css:` takes a path or a list, resolved against the project file and appended
 after the theme's own rules — enough to restyle a book without authoring a theme.
 
+A theme can also live in your project: `theme: ./theme/mine` (any value with a
+`/`, or starting with `.` or `~`) loads a theme directory, resolved against the
+document's or project's directory. It may `extends: report` to inherit a
+built-in; see `know-how/authoring-a-theme.md`.
+
 ```bash
 scriptorium render scriptorium.yaml     # concatenates the files -> book.pdf
 scriptorium tangle scriptorium.yaml     # extract export= code into src/
