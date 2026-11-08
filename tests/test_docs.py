@@ -57,7 +57,7 @@ def site(tmp_path_factory):
 
 def test_one_page_per_chapter_and_part_with_text(site):
     names = sorted(p.name for p in site.glob("*.html"))
-    assert names == ["exercises-2.html", "exercises.html", "index.html", "sound.html",
+    assert names == ["404.html", "exercises-2.html", "exercises.html", "index.html", "sound.html",
                      "strings.html", "what.html"]
 
 
@@ -226,3 +226,52 @@ def test_a_code_title_and_its_language(tmp_path):
     assert '<div class="codeblock" data-lang="python"><span class="code-file">setup.py</span>' in page
     assert '<div class="codeblock" data-lang="bash"><span class="code-src">' in page
     assert 'data-copy="Copy"' in page and "--docs-output-label: 'Output'" in page
+
+
+def _git_project(tmp_path):
+    """A two-chapter project in a git repo, its docs in docs/."""
+    import subprocess
+    root = tmp_path / "repo"
+    docs = root / "docs"
+    docs.mkdir(parents=True)
+    (docs / "one.md").write_text("# One {#one}\n\nThe first chapter, about one thing.\n\n```bash\n# not a heading\n```\n")
+    (docs / "two.md").write_text("# Two {#two}\n\nThe second.\n")
+    (docs / "scriptorium.yaml").write_text(
+        "base-url: https://example.org/lib/\nfiles: [one.md, two.md]\noutputs:\n  site:\n    format: docs\n"
+        "    repo-url: https://github.com/ana/lib\n    footer: '© 2026 Ana'\n")
+    env = {"GIT_AUTHOR_DATE": "2026-11-01T12:00:00", "GIT_COMMITTER_DATE": "2026-11-01T12:00:00"}
+    run = lambda *a: subprocess.run(a, cwd=root, check=True, capture_output=True,
+                                    env={**__import__("os").environ, **env})
+    run("git", "init", "-q")
+    run("git", "-c", "user.name=t", "-c", "user.email=t@t", "add", ".")
+    run("git", "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "docs")
+    from scriptorium.cli import main
+    assert main(["render", str(docs / "scriptorium.yaml"), "--no-execute"]) == 0
+    return docs / "site"
+
+
+def test_each_page_links_its_file_for_editing_and_shows_its_date(tmp_path):
+    site = _git_project(tmp_path)
+    one, two = (site / "one.html").read_text(), (site / "two.html").read_text()
+    assert 'href="https://github.com/ana/lib/edit/HEAD/docs/one.md"' in one
+    assert 'href="https://github.com/ana/lib/edit/HEAD/docs/two.md"' in two
+    assert "Last updated 2026-11-01" in one and '<span class="site-footer">© 2026 Ana</span>' in one
+
+
+def test_meta_canonical_sitemap_and_404(tmp_path):
+    site = _git_project(tmp_path)
+    one = (site / "one.html").read_text()
+    assert '<meta name="description" content="The first chapter, about one thing.">' in one
+    assert '<link rel="canonical" href="https://example.org/lib/one.html">' in one
+    assert '<meta property="og:title" content="One">' in one
+    sitemap = (site / "sitemap.xml").read_text()
+    assert "<loc>https://example.org/lib/</loc>" in sitemap and "<loc>https://example.org/lib/two.html</loc>" in sitemap
+    lost = (site / "404.html").read_text()
+    assert '<base href="https://example.org/lib/">' in lost and "Page not found" in lost
+
+
+def test_without_git_or_base_url_the_site_still_builds(tmp_path):
+    out = _site_with(tmp_path, repo_url="https://github.com/ana/lib", footer="F")
+    page = (out / "one.html").read_text()
+    assert "edit/HEAD" not in page and "Last updated" not in page and "F</span>" in page
+    assert (out / "404.html").is_file() and not (out / "sitemap.xml").exists()

@@ -41,6 +41,8 @@ class Output:
     version: str | None = None  # a version string, or "auto"
     palette: dict = field(default_factory=dict)  # primary, accent, scheme
     typography: str = "docs"  # "docs" | "theme"
+    edit_path: str | None = None  # the docs folder inside the repository, for "Edit this page"
+    footer: str | None = None  # text at the foot of every page
 
 
 # the keys each format accepts; anything else is a typo or a key for the
@@ -50,7 +52,7 @@ _OUTPUT_KEYS = {
     "html": {"format", "dir", "vars", "cover", "image-max-width", "image-quality",
              "offline-images", "offline-media", "js", "css"},
     "docs": {"format", "dir", "vars", "image-max-width", "image-quality", "js", "css", "repo-url",
-             "logo", "favicon", "version", "palette", "typography"},
+             "logo", "favicon", "version", "palette", "typography", "edit-path", "footer"},
 }
 _PALETTE_KEYS = {"primary", "accent", "scheme"}
 _SCHEMES = ("auto", "light", "dark")
@@ -93,6 +95,7 @@ def _outputs(spec) -> list[Output]:
             version=None if cfg.get("version") is None else str(cfg["version"]),
             palette={k: str(v) for k, v in palette.items()},
             typography=cfg.get("typography", "docs"),
+            edit_path=cfg.get("edit-path"), footer=cfg.get("footer"),
         ))
     return outs
 
@@ -106,6 +109,7 @@ class Project:
     code_root: str | None = None
     meta: dict = field(default_factory=dict)  # content keys: bibliography, nocite
     outputs: list[Output] = field(default_factory=list)
+    files: list[str] = field(default_factory=list)  # the chapter files, in order
 
 
 def _strip_frontmatter(text: str) -> str:
@@ -146,4 +150,5 @@ def load(path: str | Path) -> Project:
 
     code_root = (spec.get("code") or {}).get("root")
     return Project(theme=theme, vars=vars, src=src, base_dir=base,
-                   code_root=code_root, meta=meta, outputs=_outputs(spec.get("outputs")))
+                   code_root=code_root, meta=meta, outputs=_outputs(spec.get("outputs")),
+                   files=[str(f) for f in spec.get("files", [])])

@@ -208,3 +208,8 @@ body.docs .tablist button { font: inherit; font-size: .85rem; background: none; 
                             padding: .35rem .7rem; margin-bottom: -1px; color: var(--docs-muted); cursor: pointer; }
 body.docs .tablist button[aria-selected="true"] { color: var(--docs-accent); border-bottom-color: var(--docs-accent); font-weight: 600; }
 @media (pointer: coarse) { body.docs .tablist button { min-height: 44px; } }
+
+/* the page foot: last updated, edit this page, and the project's footer text */
+.page-foot { display: flex; justify-content: space-between; flex-wrap: wrap; gap: .5rem 1rem; margin-top: 3rem;
+             font-size: .82rem; color: var(--docs-muted); }
+.page-foot + .pager { margin-top: 1rem; }

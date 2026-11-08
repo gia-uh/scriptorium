@@ -11,7 +11,7 @@ from test_reader_browser import DESK, PHONE, browser  # noqa: F401 (a fixture)
 pytestmark = pytest.mark.browser
 playwright = pytest.importorskip("playwright.sync_api")
 
-PAGES = ["index.html", "sound.html", "what.html", "exercises.html", "strings.html", "exercises-2.html"]
+PAGES = ["index.html", "sound.html", "what.html", "exercises.html", "strings.html", "exercises-2.html", "404.html"]
 
 
 @pytest.fixture(scope="module")
