@@ -47,6 +47,14 @@ def test_render_html_drops_html_comments():
     assert "@alex" not in html
 
 
+def test_render_html_frames_the_page_on_screen():
+    # Print gets its margins from @page. The same HTML is opened in a browser,
+    # where prose otherwise runs edge to edge and a phone has no reading margin.
+    html, _ = render_html(DOC, execute=False)
+    assert "@media screen" in html
+    assert "html body { max-width:52rem; margin:0 auto; padding:8mm; }" in html
+
+
 def test_render_html_refuses_deck_themes():
     with pytest.raises(ValueError, match="deck"):
         render_html("---\ntheme: deck\n---\n\n# Slide\n", execute=False)
