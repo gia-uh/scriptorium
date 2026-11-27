@@ -67,6 +67,13 @@ want customizable.
   `components/name.html`. Props default to the document's frontmatter (so
   `{{author}}` works), overridden by `{attrs}`; `{{content}}` is the rendered
   body. Register keep-together in `theme.yml components:`.
+- **Executable component** — a hint `execute: true` lets a `{run}` fence inside
+  the body run in the document session (so `continue` works) and splice its
+  stdout as Markdown in place. Add `heading_offset: 2` to demote the body's
+  headings below the chapter and `scoped: true` to keep them out of the TOC.
+  `base` ships `::: proof` with those three hints plus `keep_together: false`,
+  because a verifier's reading routinely runs past one page. Only components
+  that ask for `execute` change the historical static-body path.
 - **Master** — a full-page template in `masters/`, triggered by a component whose
   hint has `master: <name>` (it renders as its own page). `theme.yml masters:`
   sets each master's `classes` and `furniture` (`stamp` = the footer).

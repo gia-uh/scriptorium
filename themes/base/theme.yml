@@ -52,6 +52,14 @@ components:
     keep_together: false   # and a five-hundred-entry glossary most of all
   timeline:
     keep_together: false
+  proof:
+    # A verifier's own Markdown is executed and spliced inside the panel. Its
+    # headings sit two levels below the chapter and never enter the TOC; the
+    # panel itself may run past a page, so it is not kept together.
+    execute: true
+    keep_together: false
+    heading_offset: 2
+    scoped: true
 
 # Cross-reference text for the HTML book, where target-counter() does not exist.
 # {chapter} {section} {figure} are counted as this theme's CSS counts them;
