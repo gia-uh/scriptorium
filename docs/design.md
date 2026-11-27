@@ -322,6 +322,12 @@ frozen render recreates the files.
 - **Display control:** `echo=false` hides source and keeps output; `output=false`
   runs but suppresses the splice (side-effect-only, e.g. a block that only writes
   a figure file referenced elsewhere).
+- **Executable components:** a theme component with `execute: true` runs a
+  `{run}` fence in its body in the same session and parses the stdout as
+  Markdown. `heading_offset` demotes the headings it prints and `scoped` keeps
+  them out of the TOC, so `::: proof` can hold a verifier's whole document
+  without starting new chapters. The static body path is unchanged for every
+  component that does not opt in.
 
 ---
 

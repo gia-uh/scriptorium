@@ -126,9 +126,15 @@ def _slug(text: str) -> str:
     return re.sub(r"[\s_]+", "-", s) or "sec"
 
 
-def _heading_unit(block: str) -> Unit:
-    """Render a heading; assign {#id .class} attrs (auto-slug id if none)."""
-    level = len(re.match(r"^\s{0,3}(#{1,6})", block).group(1))
+def _heading_unit(block: str, offset: int = 0, scoped: bool = False) -> Unit:
+    """Render a heading; assign {#id .class} attrs (auto-slug id if none).
+
+    `offset` shifts the tag down that many levels, so a verifier's Markdown can
+    sit inside a chapter without becoming its next chapter. `scoped` marks the
+    heading unlisted, so `fill_toc` and every text consumer skip it.
+    """
+    source_level = len(re.match(r"^\s{0,3}(#{1,6})", block).group(1))
+    level = min(6, source_level + max(0, offset))
     src, hid, classes = block, None, []
     m = _HEAD_ATTR.match(block)
     if m:
@@ -136,6 +142,11 @@ def _heading_unit(block: str) -> Unit:
         idm = re.search(r"#([\w:.-]+)", m.group(2))
         classes = re.findall(r"\.([\w-]+)", m.group(2))
         hid = idm.group(1) if idm else None
+    if level != source_level:
+        src = re.sub(r"^(\s{0,3})#{1,6}", lambda mm: mm.group(1) + "#" * level,
+                     src, count=1)
+    if scoped:
+        classes.append("unlisted")
     label = _HEADING.match(src).group(1) if _HEADING.match(src) else None
     if label:
         # The label feeds the TOC and every other text consumer, so it has to be
@@ -301,7 +312,21 @@ def _scalar(v) -> str:
     return ", ".join(str(x) for x in v) if isinstance(v, list) else str(v)
 
 
-def _render_fragment(src: str, theme: Theme, meta: dict | None = None) -> str:
+def _render_fragment(src: str, theme: Theme, meta: dict | None = None,
+                     env=None, execute: bool = False,
+                     heading_offset: int = 0, scoped: bool = False) -> str:
+    """Render a component body.
+
+    The default path is the historical one: each Markdown region is rendered
+    whole, so a component body behaves exactly like a document fragment. A
+    component whose theme hint opts into `execute` takes the executable path
+    below, where a nested `{run}` fence runs in the document session and its
+    stdout is parsed as Markdown in place. That is what lets a chapter wrap a
+    verifier's own Markdown literally in `::: proof` instead of slicing it.
+    """
+    if execute and env is not None:
+        return _render_exec_fragment(src, theme, meta, env,
+                                     heading_offset, scoped)
     parts = []
     for node in _split_nodes(src):
         if node[0] == "md":
@@ -309,13 +334,83 @@ def _render_fragment(src: str, theme: Theme, meta: dict | None = None) -> str:
                 parts.append(_md.render(_rewrite_refs(node[1])))
         else:
             _, name, mods, attrs, inner = node
-            parts.append(_component_html(name, mods, attrs, inner, theme, meta))
+            parts.append(_component_html(name, mods, attrs, inner, theme, meta,
+                                         env=env))
     return "".join(parts)
 
 
-def _component_html(name, mods, attrs, inner, theme: Theme, meta: dict | None = None) -> str:
+def _spliced_text(parts) -> str:
+    """The Markdown a run block printed, with display bundles reduced to text."""
+    out = []
+    for part in parts:
+        if isinstance(part, str):
+            out.append(part)
+            continue
+        data = part.get("data", {})
+        for mime in ("text/markdown", "text/html", "text/plain"):
+            if mime in data:
+                out.append(data[mime])
+                break
+    return "".join(out)
+
+
+def _render_exec_fragment(src: str, theme: Theme, meta: dict | None, env,
+                          heading_offset: int, scoped: bool) -> str:
+    """The executable body path: run nested fences, splice their Markdown."""
+    parts = []
+    for node in _split_nodes(src):
+        if node[0] != "md":
+            _, name, mods, attrs, inner = node
+            parts.append(_component_html(name, mods, attrs, inner, theme, meta,
+                                         env=env))
+            continue
+        for kind, *rest in _split_md(node[1]):
+            if kind == "code":
+                info, body = rest
+                f = parse_fence(info)
+                if not (f.run and env is not None):
+                    lang = f' data-lang="{escape(f.lang)}"' if f.lang else ""
+                    parts.append(
+                        f'<div class="codeblock"{lang}>'
+                        f'<span class="code-src">{highlight(body, f.lang)}</span></div>')
+                    continue
+                res = env.run(body, f.lang, cont=f.cont)
+                if res.failed:
+                    stdout = "".join(
+                        p if isinstance(p, str)
+                        else p["data"].get("text/plain", "") + "\n"
+                        for p in split(res.stdout))
+                    stdout = stdout if not stdout or stdout.endswith("\n") else stdout + "\n"
+                    parts.append(
+                        f'<pre class="output error">{escape(stdout)}'
+                        f'<span class="stderr">{escape(res.stderr)}</span></pre>')
+                elif res.stdout.strip():
+                    text = _spliced_text(split(res.stdout))
+                    if text.strip():
+                        parts.append(_render_exec_fragment(
+                            text, theme, meta, env, heading_offset, scoped))
+                continue
+            block = rest[0]
+            if _HEADING.match(block):
+                parts.append(_heading_unit(block, offset=heading_offset,
+                                           scoped=scoped).html)
+            else:
+                parts.append(_md.render(_rewrite_refs(block)))
+    return "".join(parts)
+
+
+def _component_html(name, mods, attrs, inner, theme: Theme,
+                    meta: dict | None = None, env=None) -> str:
+    execute = env is not None and bool(theme.hint(name, "execute", False))
+    offset = int(theme.hint(name, "heading_offset", 0) or 0)
+    scoped = bool(theme.hint(name, "scoped", False))
+
+    def body() -> str:
+        return _render_fragment(inner, theme, meta, env=env, execute=execute,
+                                heading_offset=offset, scoped=scoped)
+
     if name == "keep":
-        return f'<div class="keep">{_render_fragment(inner, theme, meta)}</div>'
+        return f'<div class="keep">{body()}</div>'
     if theme.is_component(name):
         # component props default to the document's metadata (author, abstract…),
         # overridden by explicit attrs; content is the rendered body. Structured
@@ -326,10 +421,10 @@ def _component_html(name, mods, attrs, inner, theme: Theme, meta: dict | None = 
         # default: an admonition's {{attr.title}} must not become the document's title
         props.update({f"attr.{k}": v for k, v in attrs.items()})
         props.setdefault("variant", " ".join(mods))
-        props["content"] = _unwrap_p(_render_fragment(inner, theme, meta))
+        props["content"] = _unwrap_p(body())
         return theme.render(name, props)
     classes = " ".join(([name] if name else []) + mods)
-    return f'<div class="{classes}">{_render_fragment(inner, theme, meta)}</div>'
+    return f'<div class="{classes}">{body()}</div>'
 
 
 def _tangle_target(f, stem: str) -> str:
@@ -511,7 +606,8 @@ def parse(src: str, theme: Theme | None = None, env=None, meta: dict | None = No
             else:
                 keep = name == "keep" or theme.hint(name, "keep_together", bool(name))
                 units.append(
-                    Unit(html=_component_html(name, mods, attrs, inner, theme, meta),
+                    Unit(html=_component_html(name, mods, attrs, inner, theme,
+                                              meta, env=env),
                          keep_together=bool(keep), name=name or "div")
                 )
     return units
