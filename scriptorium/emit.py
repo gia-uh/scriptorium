@@ -223,7 +223,7 @@ def emit(units: list[Unit], theme: Theme, meta: dict | None = None) -> str:
     out = [
         f"<!DOCTYPE html><html lang='{_lang(theme, meta)}'><head><meta charset='utf-8'><style>",
         _emit_css(theme, meta),
-        "</style></head><body>",
+        "</style></head><body class=\"document\">",
     ]
 
     for u in units:

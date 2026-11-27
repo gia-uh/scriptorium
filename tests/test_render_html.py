@@ -52,7 +52,7 @@ def test_render_html_frames_the_page_on_screen():
     # where prose otherwise runs edge to edge and a phone has no reading margin.
     html, _ = render_html(DOC, execute=False)
     assert "@media screen" in html
-    assert "html body { max-width:52rem; margin:0 auto; padding:8mm; }" in html
+    assert "html body.document { max-width:52rem; margin:0 auto; padding:8mm; }" in html
 
 
 def test_render_html_refuses_deck_themes():
