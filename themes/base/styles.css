@@ -30,6 +30,12 @@ body {
   -webkit-print-color-adjust:exact; print-color-adjust:exact;
   hyphens:auto;
 }
+/* The same HTML is a browser page when `render --html` writes it. Print gets
+   its margins from @page; on screen the prose needs a frame and a measure, or
+   it runs edge to edge on a phone and across the whole desktop. */
+@media screen {
+  html body.document { max-width:52rem; margin:0 auto; padding:8mm; }
+}
 
 h1, h2, h3, h4, h5, h6 { font-family:var(--heading-font), system-ui, sans-serif;
   color:var(--ink); font-weight:700; line-height:1.15; margin:0 0 3mm 0; }
